@@ -15,7 +15,7 @@ namespace GraveOfTruth
     {
         public const string GUID = "rauschekuh.graveoftruth";
         public const string NAME = "GraveOfTruth";
-        public const string VERSION = "0.0.1";
+        public const string VERSION = "0.0.3";
 
         private static AudioClip audioClip;
         private static float lastPlay;

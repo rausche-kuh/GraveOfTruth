@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Paths to the game / mod manager. Written by scripts/setup.ps1, gitignored. -->
+  <Import Project="Valheim.props" Condition="Exists('Valheim.props')" />
+
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>GraveOfTruth</AssemblyName>
+    <RootNamespace>GraveOfTruth</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Only src/ is ours; decompiled/ must never be compiled. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <!-- Game assemblies are not CLS-tidy; keep the build quiet about them. -->
+    <NoWarn>$(NoWarn);CS0436;MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- net472 reference assemblies, so no Visual Studio install is needed. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- Makes private game members (TombStone.IsOwner, m_nview, ...) visible at compile time. -->
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <!-- Valheim + Unity + BepInEx assemblies, staged into lib/ by scripts/setup.ps1. -->
+  <ItemGroup>
+    <Reference Include="lib\*.dll" Exclude="lib\assembly_valheim.dll;lib\assembly_utils.dll" Private="false" />
+    <Reference Include="lib\assembly_valheim.dll;lib\assembly_utils.dll" Private="false" Publicize="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="assets\sound.ogg" Link="sound.ogg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
