@@ -4,13 +4,14 @@ A workspace for BepInEx 5 / HarmonyX plugins for Valheim. Each mod is a top leve
 build, the reference assemblies and the scripts are shared.
 
 **Mods:** `GraveOfTruth/` — makes dying embarrassing (see `GraveOfTruth/CLAUDE.md`).
+`OdinsMissingPatch/` — a collection of configurable QOL tweaks (see `OdinsMissingPatch/CLAUDE.md`).
 
 ## Layout
 
 | Path | What |
 | --- | --- |
 | `<Mod>/` | One mod: `<Mod>.csproj`, `src/`, `assets/`, `package/`, `README.md`. |
-| `<Mod>/package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page). |
+| `<Mod>/package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (its Changelog tab). |
 | `<Mod>/<Mod>.csproj` | `AssemblyName` + `RootNamespace` only — everything else is inherited. |
 | `Directory.Build.props` | The shared build: target framework, `lib/` references, publicizer, `src/` and `assets/` globs. |
 | `scripts/` | `setup`, `deploy`, `package`, `decompile`, `clean` — `.ps1` for Windows, `.sh` for Linux, plus `lib.ps1` / `lib.sh`. |
@@ -57,6 +58,10 @@ solution file — build a project, or use the scripts.
   Linux, no Mono or Wine. Backslash paths in the MSBuild files are normalised by MSBuild, so leave
   them alone.
 - Target framework is `net472` (matches previously shipped builds).
+- `~/Documents/Code/test/` holds reference checkouts of other people's mods, kept purely to see
+  how a working mod solves something: `ValheimMods` (Crystal Ferrai's collection, Apache-2.0, 19
+  shipped mods) and `Digitalroot.Valheim.EternalFire` (AGPL-3.0). Read them before reinventing a
+  patch; never copy code out of them — Apache needs the license notice, AGPL would bind the mod.
 
 ## Conventions
 
@@ -72,10 +77,18 @@ solution file — build a project, or use the scripts.
 - Everything in a mod's `assets/` is copied next to its DLL at build time and shipped in the zip;
   load it at runtime from beside the assembly.
 - `<Mod>/package/README.md` is the Thunderstore page and the only README that ships in the zip:
-  what the mod does, install, multiplayer/compatibility, changelog — no build instructions and no
-  repo-relative links, since Thunderstore renders it standalone. `<Mod>/README.md` is the dev facing
-  one (what it is, how to build it, pointers into `scripts/README.md`) and stays out of the zip. The
-  root `README.md` is the repo index, and everything about the scripts lives in `scripts/README.md`.
+  what the mod does, install, multiplayer/compatibility — no build instructions and no repo-relative
+  links, since Thunderstore renders it standalone, and no changelog, which has its own file below.
+  `<Mod>/README.md` is the dev facing one (what it is, how to build it, pointers into
+  `scripts/README.md`) and stays out of the zip. The root `README.md` is the repo index, and
+  everything about the scripts lives in `scripts/README.md`.
+- `<Mod>/package/CHANGELOG.md` is the mod's changelog, shipped in the zip and rendered by Thunderstore
+  as the Changelog tab: `# Changelog`, then one `## <version>` section per release, newest first,
+  with a bullet per user-visible change. Work that has not shipped goes under `## Unreleased` at
+  the top; renaming that heading to the version is part of the release, alongside the `VERSION`
+  bump. Add an entry whenever a change alters what a player sees — same commit as the change —
+  and write it for players, not for developers: what changed in the game, not which method was
+  patched. `package` refuses to build a zip without the file.
 - Patches are plain `[HarmonyPatch]` classes nested in the plugin class; keep them small and
   null-guard everything (`Player.m_localPlayer` is frequently null).
 - Check `dependencies` in a mod's `package/manifest.json` against the current Thunderstore BepInEx

@@ -3,7 +3,8 @@
 .SYNOPSIS
     Builds Thunderstore-ready zips in dist/, one per mod. A mod's version comes from the VERSION
     const in its plugin source and is stamped into its package/manifest.json. The zip ships the
-    mod's package/ folder - manifest.json, icon.png and README.md, the Thunderstore page.
+    mod's package/ folder - manifest.json, icon.png, README.md (the Thunderstore page) and
+    CHANGELOG.md (its Changelog tab).
     With no mod names, every mod in the repo is packaged.
 .EXAMPLE
     .\scripts\package.ps1 GraveOfTruth
@@ -30,6 +31,11 @@ foreach ($mod in $Mods) {
     if (-not (Test-Path $readmePath)) {
         throw "$mod\package\README.md missing - it is the Thunderstore description."
     }
+    # Thunderstore renders a CHANGELOG.md at the zip root as the Changelog tab.
+    $changelogPath = Join-Path $Root "$mod\package\CHANGELOG.md"
+    if (-not (Test-Path $changelogPath)) {
+        throw "$mod\package\CHANGELOG.md missing - it is the Thunderstore changelog."
+    }
     $manifest = (Get-Content $manifestPath -Raw) -replace '("version_number"\s*:\s*")[^"]+', "`${1}$version"
     # Thunderstore dislikes a BOM in manifest.json, so bypass Set-Content's encoding defaults.
     [IO.File]::WriteAllText($manifestPath, $manifest.TrimEnd() + "`n", (New-Object Text.UTF8Encoding $false))
@@ -47,6 +53,7 @@ foreach ($mod in $Mods) {
     Copy-Item $manifestPath $stage
     Copy-Item (Join-Path $Root "$mod\package\icon.png") $stage
     Copy-Item $readmePath $stage
+    Copy-Item $changelogPath $stage
 
     $zip = Join-Path $Root "dist\$mod-$version.zip"
     if (Test-Path $zip) { Remove-Item $zip -Force }

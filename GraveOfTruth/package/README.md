@@ -22,10 +22,3 @@ Install through a mod manager (Gale or r2modman), or drop the contents of the zi
 `BepInEx/plugins/rauschekuh-GraveOfTruth/`.
 
 Requires the BepInEx pack for Valheim.
-
-## Changelog
-
-**0.1.0** — lightning on the grave, the networked jingle with its echoes, the death thunderstorm
-and the looting wind gust, all of it shared with every modded client.
-
-**Earlier** — tombstone sound only.

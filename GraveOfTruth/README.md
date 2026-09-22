@@ -8,7 +8,7 @@ describes what the mod actually does.
 | --- | --- |
 | `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
 | `assets/sound.ogg` | The jingle, loaded at runtime from next to the DLL. |
-| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`. |
+| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 
 ## Build
 

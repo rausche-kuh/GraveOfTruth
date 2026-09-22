@@ -13,7 +13,7 @@ spawned or played twice.
 | --- | --- |
 | `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
 | `assets/sound.ogg` | Loser jingle, loaded at runtime from next to the DLL. |
-| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page). |
+| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
 ## Conventions
 
