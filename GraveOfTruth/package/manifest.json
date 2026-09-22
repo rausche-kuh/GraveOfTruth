@@ -1,7 +1,7 @@
 {
     "name": "GraveOfTruth",
     "version_number": "0.1.0",
-    "website_url": "https://github.com/rausche-kuh/GraveOfTruth",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
     "description": "Adds a reminder to be ashamed of death",
     "dependencies": [
         "denikson-BepInExPack_Valheim-5.4.2350"
