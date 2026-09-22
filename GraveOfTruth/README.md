@@ -1,29 +1,22 @@
 # GraveOfTruth
 
-A small Valheim mod that makes dying feel appropriately embarrassing.
+Dying calls down the obliterator's lightning on your grave and plays a loser jingle out of it, echo,
+thunderstorm and all. [`package/README.md`](package/README.md) is the Thunderstore page and
+describes what the mod actually does.
 
-- When you die, the obliterator's lightning comes down on your fresh grave, and once the thunder
-  has rolled the loser jingle plays out of it, echoing off the hills — everyone nearby sees and
-  hears it. The bolt is cosmetic and hurts nobody.
-- Dying also brings a short thunderstorm down on your head.
-- Coming back to loot the grave plays the jingle one more time, echo and all, with a gust of wind.
+| Path | What |
+| --- | --- |
+| `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
+| `assets/sound.ogg` | The jingle, loaded at runtime from next to the DLL. |
+| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`. |
 
-The jingle is broadcast to the server, so every player running the mod hears it from the grave;
-players without it hear nothing. The weather is client side only — nobody else sees your storm.
-Releases before 0.1.0 only had the tombstone sound.
-
-## Install
-
-Use a mod manager (Gale / r2modman) and install `GraveOfTruth` from Thunderstore, or drop the
-contents of the release zip into `BepInEx/plugins/rauschekuh-GraveOfTruth/`.
-
-Requires the BepInEx pack for Valheim.
-
-## Build from source
+## Build
 
 ```bash
-./scripts/setup.sh              # once, and after every Valheim update
-./scripts/deploy.sh GraveOfTruth
+./scripts/setup.sh                  # once, and after every Valheim update
+./scripts/deploy.sh GraveOfTruth    # build + install into your profile
+./scripts/package.sh GraveOfTruth   # dist/GraveOfTruth-<version>.zip
 ```
 
+`VERSION` in `src/GraveOfTruth.cs` is the version — `package` stamps it into `package/manifest.json`.
 See [scripts/README.md](../scripts/README.md) for the full workflow on Windows and Linux.

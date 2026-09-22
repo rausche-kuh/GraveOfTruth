@@ -17,7 +17,7 @@ namespace GraveOfTruth
         public const string NAME = "GraveOfTruth";
         public const string VERSION = "0.1.0";
 
-        /// <summary>Broadcast to every modded client: jingle here, and maybe a bolt with it.</summary>
+        /// <summary>Broadcast to every modded client: the whole show here, bolt and storm included.</summary>
         private const string WailRpc = "GraveOfTruth_Wail";
 
         // Audio tuning.
@@ -86,7 +86,6 @@ namespace GraveOfTruth
                     // CreateTombStone instantiates the grave at exactly this point, so it is
                     // where the grave is even when an empty inventory means there isn't one.
                     Wail(__instance.GetCenterPoint(), strike: true);
-                    Blow(DeathStormDuration, storm: true);
                 }
                 catch (Exception e)
                 {
@@ -95,7 +94,7 @@ namespace GraveOfTruth
             }
         }
 
-        /// <summary>Opening your own grave to loot it wails once more. The wind stays local.</summary>
+        /// <summary>Opening your own grave to loot it wails once more, gust and all.</summary>
         [HarmonyPatch(typeof(TombStone), nameof(TombStone.Interact))]
         public static class WailOnLoot
         {
@@ -108,7 +107,6 @@ namespace GraveOfTruth
                         return;
                     }
                     Wail(__instance.transform.position, strike: false);
-                    Blow(GraveWindDuration, storm: false);
                 }
                 catch (Exception e)
                 {
@@ -117,7 +115,7 @@ namespace GraveOfTruth
             }
         }
 
-        /// <summary>Tells everyone on the server to play the jingle from the grave.</summary>
+        /// <summary>Tells everyone on the server to put on the show at the grave.</summary>
         private static void Wail(Vector3 pos, bool strike)
         {
             if (Time.realtimeSinceStartup - lastSend <= SendCooldown)
@@ -137,24 +135,36 @@ namespace GraveOfTruth
             }
         }
 
+        /// <summary>
+        /// The whole show, run the same way on every modded client: the bolt, the weather and the
+        /// jingle. Everything it spawns is local to this client, so nobody sees a thing twice.
+        /// </summary>
         private static void RPC_Wail(long sender, Vector3 pos, bool strike)
         {
-            if (strike)
+            // A dedicated server has nobody watching, and its EnvMan is not the players'.
+            if (ZNet.instance != null && ZNet.instance.IsDedicated())
             {
-                // The bolt is a networked prefab, so only the client it happened to may spawn it -
-                // anyone else would add a duplicate. The rest get the sky lighting up instead.
-                if (sender != ZDOMan.GetSessionID() || !StrikeGrave(pos))
+                return;
+            }
+            try
+            {
+                if (strike && !StrikeGrave(pos))
                 {
                     SkyFlash(pos);
                 }
-            }
+                Blow(strike ? DeathStormDuration : GraveWindDuration, strike);
 
-            if (instance == null)
-            {
-                PlayAt(pos, 1f);
-                return;
+                if (instance == null)
+                {
+                    PlayAt(pos, 1f);
+                    return;
+                }
+                instance.StartCoroutine(WailRoutine(pos, strike ? StrikeLeadIn : 0f));
             }
-            instance.StartCoroutine(WailRoutine(pos, strike ? StrikeLeadIn : 0f));
+            catch (Exception e)
+            {
+                Debug.LogWarning("[GraveOfTruth] wail failed: " + e);
+            }
         }
 
         /// <summary>
@@ -226,8 +236,9 @@ namespace GraveOfTruth
         }
 
         /// <summary>
-        /// Drops the obliterator's lightning straight onto the gravestone. Every Aoe on it is
-        /// defanged before it wakes up, so the bolt is pure show and hurts nobody.
+        /// Drops the obliterator's lightning straight onto the gravestone - one copy per client,
+        /// belonging to nobody but that client. Every Aoe on it is defanged before it wakes up,
+        /// so the bolt is pure show and hurts nobody.
         /// </summary>
         private static bool StrikeGrave(Vector3 pos)
         {
@@ -238,34 +249,40 @@ namespace GraveOfTruth
             }
 
             // Spawn it asleep: an Aoe with m_hitOnEnable would otherwise land its damage in
-            // Instantiate, before we ever get to touch it.
-            GameObject bolt;
+            // Instantiate, before we ever get to touch it. m_forceDisableInit is the game's own
+            // way of saying "no ZDO for this one": the ZNetView destroys itself in Awake, so the
+            // bolt never leaves this client - every client spawns its own off the same RPC
+            // instead of also being shown someone else's.
             bool wasActive = prefab.activeSelf;
+            bool wasDisabled = ZNetView.m_forceDisableInit;
             prefab.SetActive(false);
+            ZNetView.m_forceDisableInit = true;
             try
             {
-                bolt = Instantiate(prefab, pos, Quaternion.identity);
+                GameObject bolt = Instantiate(prefab, pos, Quaternion.identity);
+
+                foreach (Aoe aoe in bolt.GetComponentsInChildren<Aoe>(true))
+                {
+                    aoe.m_damage = new HitData.DamageTypes();
+                    aoe.m_damagePerLevel = new HitData.DamageTypes();
+                    aoe.m_damageSelf = 0f;
+                    aoe.m_attackForce = 0f;
+                    aoe.m_hitCharacters = false;
+                    aoe.m_hitProps = false;
+                    aoe.m_hitTerrain = false;
+                    aoe.m_hitOwner = false;
+                    aoe.m_hitParent = false;
+                    aoe.m_launchCharacters = false;
+                }
+
+                // Awake runs here, so the flag has to still be set.
+                bolt.SetActive(true);
             }
             finally
             {
+                ZNetView.m_forceDisableInit = wasDisabled;
                 prefab.SetActive(wasActive);
             }
-
-            foreach (Aoe aoe in bolt.GetComponentsInChildren<Aoe>(true))
-            {
-                aoe.m_damage = new HitData.DamageTypes();
-                aoe.m_damagePerLevel = new HitData.DamageTypes();
-                aoe.m_damageSelf = 0f;
-                aoe.m_attackForce = 0f;
-                aoe.m_hitCharacters = false;
-                aoe.m_hitProps = false;
-                aoe.m_hitTerrain = false;
-                aoe.m_hitOwner = false;
-                aoe.m_hitParent = false;
-                aoe.m_launchCharacters = false;
-            }
-
-            bolt.SetActive(true);
             return true;
         }
 
@@ -288,7 +305,7 @@ namespace GraveOfTruth
             return null;
         }
 
-        /// <summary>Fallback and what remote clients see: flash low overhead, instant clap.</summary>
+        /// <summary>Fallback when the obliterator is nowhere to be found: flash low overhead, instant clap.</summary>
         private static void SkyFlash(Vector3 pos)
         {
             Thunder t = FindThunder();
@@ -308,7 +325,10 @@ namespace GraveOfTruth
             t.m_thunderEffect.Create(pos, Quaternion.identity);
         }
 
-        /// <summary>Kicks up wind, and for a death the whole thunderstorm. Client side only.</summary>
+        /// <summary>
+        /// Kicks up wind, and for a death the whole thunderstorm. Faked through EnvMan, so every
+        /// client runs its own - and a second wail never stacks a second storm on top.
+        /// </summary>
         private static void Blow(float duration, bool storm)
         {
             if (instance == null || EnvMan.instance == null)
