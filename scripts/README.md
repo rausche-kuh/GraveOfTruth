@@ -100,9 +100,14 @@ against a second profile without re-running `setup`.
 ```
 
 Reads each mod's `VERSION` const from its `src/`, stamps it into its `package/manifest.json`,
-builds Release, and writes a flat `dist/<Mod>-<version>.zip` containing the DLL, the assets, the
-manifest, the icon and the mod's own `README.md`. On Linux it uses `zip` if present, otherwise
-`python3`.
+builds Release, and writes a flat `dist/<Mod>-<version>.zip` containing the DLL, the assets and the
+mod's `package/` folder — `manifest.json`, `icon.png` and `README.md`. On Linux it uses `zip` if
+present, otherwise `python3`.
+
+The shipped README is `<Mod>/package/README.md`, and it is the Thunderstore page: what the mod does,
+how to install it, multiplayer and compatibility notes, changelog. Nothing about building from
+source and no links relative to the repo — Thunderstore renders it standalone, so a `../` link is a
+dead link. `<Mod>/README.md` is the dev facing one and is not shipped.
 
 Only bump `VERSION` for an actual Thunderstore release, and check `dependencies` in that mod's
 `package/manifest.json` against the current BepInEx pack first.
@@ -150,13 +155,14 @@ so nothing needs registering. Create:
   <Name>.csproj      AssemblyName + RootNamespace only - the build lives in Directory.Build.props
   src/<Name>.cs      the BaseUnityPlugin, with the GUID/NAME/VERSION consts
   assets/            optional, shipped next to the DLL
-  package/           manifest.json + icon.png for Thunderstore
-  README.md          shipped in the zip as the Thunderstore description
+  package/           what Thunderstore gets: manifest.json, icon.png, README.md
+  README.md          dev facing, not shipped - what the mod is, how to build it
 ```
 
 `package/manifest.json` needs `name`, `version_number` (whatever — `package` overwrites it from
-`VERSION`), `website_url`, `description` and the BepInEx pack in `dependencies`. Then
-`./scripts/deploy.sh <Name>`.
+`VERSION`), `website_url`, `description` and the BepInEx pack in `dependencies`.
+`package/README.md` is the Thunderstore page (see `package` above); `package` refuses to build a zip
+without it. Then `./scripts/deploy.sh <Name>`.
 
 ## Where things end up
 

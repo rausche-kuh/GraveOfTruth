@@ -18,7 +18,8 @@ mod, and what to do when something goes wrong.
 ## Layout
 
 ```
-GraveOfTruth/          one mod: <Name>/<Name>.csproj, src/, assets/, package/
+GraveOfTruth/          one mod: <Name>/<Name>.csproj, src/, assets/, package/, README.md
+  package/             manifest.json, icon.png and the Thunderstore page README.md
 scripts/               setup, deploy, package, decompile, clean (.sh and .ps1)
 Directory.Build.props  the build every mod shares
 lib/                   game + BepInEx reference assemblies   (generated, gitignored)

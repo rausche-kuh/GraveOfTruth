@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds Thunderstore-ready zips in dist/, one per mod. A mod's version comes from the VERSION
-# const in its plugin source and is stamped into its package/manifest.json.
+# const in its plugin source and is stamped into its package/manifest.json. The zip ships the mod's
+# package/ folder - manifest.json, icon.png and README.md, the Thunderstore page.
 # With no mod names, every mod in the repo is packaged.
 #
 # Usage: scripts/package.sh [mod ...]
@@ -23,6 +24,9 @@ for mod in "${mods[@]}"; do
     step "Packaging $mod $version..."
 
     manifest="$root/$mod/package/manifest.json"
+    # The Thunderstore page: package/README.md, not the mod's dev facing README.md.
+    readme="$root/$mod/package/README.md"
+    [ -f "$readme" ] || die "$mod/package/README.md missing - it is the Thunderstore description."
     # Thunderstore dislikes a BOM in manifest.json; sed in place keeps the file plain UTF-8.
     sed -i -E "s;(\"version_number\"[[:space:]]*:[[:space:]]*\")[^\"]+;\1$version;" "$manifest"
 
@@ -36,7 +40,7 @@ for mod in "${mods[@]}"; do
     [ -d "$root/$mod/assets" ] && cp -r "$root/$mod/assets/." "$stage" || true
     cp "$manifest" "$stage"
     cp "$root/$mod/package/icon.png" "$stage"
-    cp "$root/$mod/README.md" "$stage"
+    cp "$readme" "$stage"
 
     zip="$root/dist/$mod-$version.zip"
     rm -f "$zip"

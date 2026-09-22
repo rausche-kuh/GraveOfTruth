@@ -10,6 +10,7 @@ build, the reference assemblies and the scripts are shared.
 | Path | What |
 | --- | --- |
 | `<Mod>/` | One mod: `<Mod>.csproj`, `src/`, `assets/`, `package/`, `README.md`. |
+| `<Mod>/package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page). |
 | `<Mod>/<Mod>.csproj` | `AssemblyName` + `RootNamespace` only — everything else is inherited. |
 | `Directory.Build.props` | The shared build: target framework, `lib/` references, publicizer, `src/` and `assets/` globs. |
 | `scripts/` | `setup`, `deploy`, `package`, `decompile`, `clean` — `.ps1` for Windows, `.sh` for Linux, plus `lib.ps1` / `lib.sh`. |
@@ -70,8 +71,11 @@ solution file — build a project, or use the scripts.
   release** — never as part of a code change. Mods version independently.
 - Everything in a mod's `assets/` is copied next to its DLL at build time and shipped in the zip;
   load it at runtime from beside the assembly.
-- A mod's own `README.md` is what ships as the Thunderstore description. The root `README.md` is
-  the repo index, and everything about the scripts lives in `scripts/README.md`.
+- `<Mod>/package/README.md` is the Thunderstore page and the only README that ships in the zip:
+  what the mod does, install, multiplayer/compatibility, changelog — no build instructions and no
+  repo-relative links, since Thunderstore renders it standalone. `<Mod>/README.md` is the dev facing
+  one (what it is, how to build it, pointers into `scripts/README.md`) and stays out of the zip. The
+  root `README.md` is the repo index, and everything about the scripts lives in `scripts/README.md`.
 - Patches are plain `[HarmonyPatch]` classes nested in the plugin class; keep them small and
   null-guard everything (`Player.m_localPlayer` is frequently null).
 - Check `dependencies` in a mod's `package/manifest.json` against the current Thunderstore BepInEx
