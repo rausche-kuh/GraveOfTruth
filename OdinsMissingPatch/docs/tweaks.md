@@ -35,7 +35,7 @@ player's own save).
   may stand from it. Doubled by default, configurable. The area marker circle grows with it.
 - **Comfort range** — the radius Rested counts furniture in. Doubled by default.
 
-## Unreleased
+## Shipped (0.2.0)
 
 - **Endless fuel** — every `Fireplace` (campfires, hearths, torches, braziers, the hot tub) is kept
   topped up, so nothing that burns fuel for light goes out. The only tweak of the first three that

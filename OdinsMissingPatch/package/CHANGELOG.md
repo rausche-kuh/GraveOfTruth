@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Endless fuel: campfires, hearths, torches, braziers and the hot tub never go out.
 - Mist clear range: wisplights, wisp torches and everything else that clears the mist reach twice

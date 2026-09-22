@@ -45,6 +45,15 @@ solution file — build a project, or use the scripts.
 - Valheim runs on **Unity 6000.0.75f1** (Mono), BepInEx **5.4.x**.
 - Game code lives in **`assembly_valheim.dll`** — `Assembly-CSharp.dll` is a ~23 KB stub, so
   grep `decompiled/assembly_valheim/` for game types (`TombStone`, `Player`, `EnvMan`, `ZSFX`, ...).
+- Scenes and prefabs are not in `valheim_Data/*.assets` but in the addressable bundles under
+  `valheim_Data/StreamingAssets/SoftRef/Bundles/<id>`; `SoftRef/manifest_extended` maps asset
+  paths to bundle ids (`Assets/Systems/_GameMain.prefab`, which holds the whole HUD and the
+  inventory screen, was in `d59cfac` as of 2026-09-22 - the ids can change with an update).
+  To read UI layout out of one, `uv venv` + `uv pip install UnityPy` in a scratch directory,
+  `UnityPy.load(bundle)`, find the `GameObject` by name and walk its `RectTransform`
+  children printing `m_AnchoredPosition`, `m_SizeDelta`, `m_AnchorMin/Max` and `m_Pivot`. That
+  is how the positions of the inventory screen's panels and readout boxes in
+  `OdinsMissingPatch/CLAUDE.md` were measured, without running the game.
 - References come from `lib/`, staged out of `valheim_Data/Managed` plus a BepInEx `core` folder.
   The only NuGet packages are the net472 reference assemblies and `BepInEx.AssemblyPublicizer.MSBuild`,
   which publicizes `assembly_valheim` / `assembly_utils` so private game members are reachable
@@ -58,10 +67,13 @@ solution file — build a project, or use the scripts.
   Linux, no Mono or Wine. Backslash paths in the MSBuild files are normalised by MSBuild, so leave
   them alone.
 - Target framework is `net472` (matches previously shipped builds).
-- `~/Documents/Code/test/` holds reference checkouts of other people's mods, kept purely to see
-  how a working mod solves something: `ValheimMods` (Crystal Ferrai's collection, Apache-2.0, 19
-  shipped mods) and `Digitalroot.Valheim.EternalFire` (AGPL-3.0). Read them before reinventing a
-  patch; never copy code out of them — Apache needs the license notice, AGPL would bind the mod.
+- `~/Documents/Code/test/othervalheimmods/` holds reference checkouts of other people's mods, kept
+  purely to see how a working mod solves something: `ValheimMods` (Crystal Ferrai's collection,
+  Apache-2.0, 19 shipped mods), `VentureValheim` (OrianaVenture's collection, MIT),
+  `Digitalroot.Valheim.EternalFire` (AGPL-3.0), `cartur-safe-stamina` and `SmartCraft-Storage`
+  (both without a license file, so all rights reserved). Read them before reinventing a patch; never copy code out of them — Apache and
+  MIT both need the license notice, AGPL would bind the mod, and an unlicensed one allows nothing
+  at all.
 
 ## Conventions
 

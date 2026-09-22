@@ -3,7 +3,7 @@
 Makes dying embarrassing. See the root `CLAUDE.md` for the shared build, the scripts and the
 environment.
 
-**Shipped (0.1.0):** on death the whole show is broadcast to every modded client — the bolt on the
+**Shipped (0.1.1):** on death the whole show is broadcast to every modded client — the bolt on the
 grave, a ~18s `ThunderStorm`, and the loser jingle as a 3D sound from the grave a beat after the
 bolt strikes, with two fading echoes behind it. Opening your own grave to loot it wails once more,
 with a wind gust. Every client runs its own copy of the effects off the one RPC, so nothing is

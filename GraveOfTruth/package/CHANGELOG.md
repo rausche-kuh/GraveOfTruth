@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1
+
+- Lighter mod page icon; nothing in the game changed.
+
 ## 0.1.0
 
 - Lightning on the grave: the obliterator's bolt comes down on the fresh tombstone, cosmetic and

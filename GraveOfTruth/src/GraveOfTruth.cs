@@ -15,7 +15,7 @@ namespace GraveOfTruth
     {
         public const string GUID = "rauschekuh.graveoftruth";
         public const string NAME = "GraveOfTruth";
-        public const string VERSION = "0.1.0";
+        public const string VERSION = "0.1.1";
 
         /// <summary>Broadcast to every modded client: the whole show here, bolt and storm included.</summary>
         private const string WailRpc = "GraveOfTruth_Wail";
