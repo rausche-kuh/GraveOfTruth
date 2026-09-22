@@ -1,7 +1,19 @@
 # Odin's Missing Patch
 
-The patch Odin forgot: a collection of small quality of life changes for Valheim. Every tweak has
-its own section in the config file and can be turned off on its own. Nothing needs a server install.
+The patch Odin forgot: my personal take on every quality of life change Valheim should have
+shipped years ago, in one mod.
+
+None of it touches the game underneath. No free materials, no shortened progression, no numbers
+bent in your favour — a boss is as hard as it was, a recipe costs what it costs, a portal still
+refuses the iron. What it takes out is the tedium: the walk back to the sacrificial stones to
+swap a power, the chest you open only to close it again, the one-item-per-click of the repair
+button, the eight seconds of staring at a black screen, the wall you mend a plank at a time
+after a raid. Everything you did is still yours to do — it just stops asking you to do it
+twenty times over.
+
+Every tweak has its own section in the config file and can be turned off on its own, so if one
+of them goes further than you would, leave it off and keep the rest. Nothing needs a server
+install.
 
 ## What it does
 
@@ -31,6 +43,15 @@ its own section in the config file and can be turned off on its own. Nothing nee
   spot you sit in, instead of after ten seconds of Resting. Everything else about resting is the
   game's own: you still need the fire, the wet and the cold still get in the way, and standing by
   the fire still takes the usual wait. A chair, a bench or the sit emote all count.
+- **Fireside healing** — sitting by the fire mends you, and the better the room the faster. Every
+  ten seconds, on the same beat the game heals you for the food you have eaten, you heal again
+  for the comfort of the spot you are resting in: two health per comfort level by default. A
+  campfire out in the open is comfort 1 and a slow mend for the road; a hall with a fire, a bed,
+  a banner and a chair reaches ten and more and patches you up in a minute, which is what makes
+  going home worth the walk. It heals whether you have eaten or not. Resting is the game's own
+  verdict throughout — you need the fire, the wet and the cold still get in the way, and a
+  monster finding you cuts the healing off with the rest of it. The rate is yours to set, and a
+  switch decides whether you have to be sitting or whether standing by your own hearth counts.
 - **Fast portals** — a portal takes as long as it needs and not a second more. The game waits a
   flat eight seconds on every trip; with this you are through as soon as the screen is black and
   the other side has loaded, which on a decent machine is about a second. The fade to black is
@@ -93,14 +114,19 @@ its own section in the config file and can be turned off on its own. Nothing nee
   stacks**, which brings you what the chest holds of the items you carry. In a column down the
   side of the chest, from its top: **Take all**; **Place all**, which puts everything you carry
   into the chest; **Fill the chest's stacks**, which puts in what you carry of the items the
-  chest holds; and **Sort the chest**, which merges its stacks and orders them by kind and
-  name. The two that put things in leave worn gear, favourites and the hotbar alone (the hotbar
+  chest holds; and **Sort the chest**, which merges its stacks and orders them the way Sort
+  below does. The two that put things in leave worn gear, favourites and the hotbar alone (the hotbar
   is a switch). Switch the tweak off and the game's two buttons are back.
 - **Inventory buttons** — two icon buttons in a column beside your inventory, between the
   armour and the weight: **Stack nearby**, which is quick stack by click and is there while quick stack is on
   and no chest is open (with a chest open, Fill your stacks stands in its place), and **Sort**,
   which merges your stacks and orders the rows below the hotbar by kind (weapons, shields,
   tools, armour, ammunition, food, materials, trophies, the rest), then name, then quality.
+  Materials get more than an alphabet: an ore sits beside the bar it smelts into and beside
+  what that bar goes on to make, every log sits with the coal it burns down to, families come
+  in the order you meet them on the way up, and everything a portal refuses to carry ends up
+  in one block at the end of them. None of that is a list of item names — it is read out of the
+  game's own recipes, so a modded material lands with its own kin.
   Favourites keep their slot and so does the hotbar (a switch).
 - **Power picker** — a **Forsaken powers** category in the radial menu, so the boss power you
   carry is a choice you make where you stand instead of a walk back to the sacrificial stones.
@@ -109,8 +135,8 @@ its own section in the config file and can be turned off on its own. Nothing nee
   are already carrying is gold and says so, and it is the icon the category itself wears, so the
   ring tells you which power you are on before you open it. Nothing else about the powers
   changes: the cooldown is a timer on you rather than on the power, so it carries straight over
-  and switching mid cooldown buys you nothing, and a power you have never taken at its stone is
-  not in the list. A character who has never taken one has no category at all.
+  and switching mid cooldown buys you nothing, and a boss you have not beaten is not in the list.
+  A character who has beaten none has no category at all.
 
 ## Configuration
 
@@ -122,7 +148,8 @@ of item types that stay with you, with every type the game knows listed in the s
 description; for area repair the radius in metres and the key that holds it back to one piece; for
 the nearby chest tweaks the range in metres, and for quick stack the hotkey, the favourite modifier
 and whether the hotbar is stacked away too; for chest buttons whether the hotbar goes into the
-chest too, and for inventory buttons whether Sort touches the hotbar. Instant comfort, auto
+chest too, and for inventory buttons whether Sort touches the hotbar; for fireside healing the
+health per comfort level and whether you have to be sitting. Instant comfort, auto
 repair and the power picker have nothing but their switch. Changes are picked up while the game
 is running, including from an in-game config manager: stations already standing around you are
 re-measured on the spot.
@@ -144,7 +171,9 @@ Combat stamina is decided on your own machine and only waives your own stamina: 
 for anyone else, player or monster. It works the same whether the monster hunting you is run by
 your machine or by another player's, because the game already tells your client when a monster has
 you as its target. Instant comfort only touches your own Rested, and status effects are your own
-machine's business, so it needs nothing from anyone else. Fast portals only shortens your own
+machine's business, so it needs nothing from anyone else. Fireside healing heals you and nobody
+else, through the game's own heal, which your machine owns for your own character — a player
+without the mod sitting at the same fire heals at the vanilla rate. Fast portals only shortens your own
 trip; the portal itself, and everyone else's trips, are untouched. Auto repair only touches
 the durability of the items in your own inventory, which is your own machine's business too. Keep gear on death is decided
 by the dying player's own machine, so it applies to you and to nobody else: a player without the
@@ -171,6 +200,9 @@ times; what it takes from chests it takes the way nearby crafting does.
 The power picker only writes to your own character. Which power you carry is saved with the
 character file and nothing else reads it, exactly as when you take one at the stones, so it needs
 nothing from the server and nothing from anyone else — and a player without the mod still walks.
+Which bosses it offers follows the server: a boss counts as beaten once the world says so, which
+is the same record that opens the stone for everyone, and your own character remembers the kills
+it was there for, so a boss you felled on another server comes with you.
 
 ## Install
 

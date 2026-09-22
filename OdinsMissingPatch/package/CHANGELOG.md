@@ -10,6 +10,10 @@
   you swim or swing. One switch per cost, the radius configurable.
 - Instant comfort: sitting down by a fire grants Rested at once, for the comfort of the spot you
   sit in, instead of after ten seconds of Resting.
+- Fireside healing: resting by a fire heals you for the comfort of the spot, every ten seconds,
+  on top of what your food heals — two health per comfort level by default, so a campfire out in
+  the open is a slow mend and a furnished hall patches you up in a minute. The rate is
+  configurable, and a switch decides whether you have to be sitting.
 - Fast portals: a portal sends you through as soon as the screen is black and the other side has
   loaded, instead of after a fixed eight seconds, and the fade to black is twice as quick.
 - Keep gear on death: weapons, armour, ammunition, tools, the belt and your food stay with you
@@ -46,11 +50,13 @@
 - Inventory buttons: a stack nearby button (quick stack by click, while no chest is open) and a
   sort button in a column beside your inventory, between the armour and the weight. Sort merges
   your stacks and orders them by kind and name, leaving favourites and the hotbar where they
-  are.
-- Power picker: a Forsaken powers category in the radial menu, holding every boss power you have
-  unlocked with its own icon. Pick one and it is the power your power key casts, without the trip
-  back to the sacrificial stones. The category shows the power you are carrying, and the cooldown
-  you are on carries over, so switching mid cooldown buys you nothing.
+  are. Materials are not just alphabetical: an ore sits with the bar it smelts into and with
+  what that bar makes, every log sits with the coal it burns down to, families come in the order
+  you meet them, and everything a portal refuses to carry ends up in one block at the end.
+- Power picker: a Forsaken powers category in the radial menu, holding the power of every boss you
+  have beaten with its own icon. Pick one and it is the power your power key casts, without the
+  trip back to the sacrificial stones. The category shows the power you are carrying, and the
+  cooldown you are on carries over, so switching mid cooldown buys you nothing.
 
 ## 0.1.0
 

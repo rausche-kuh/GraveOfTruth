@@ -6,8 +6,11 @@ namespace OdinsMissingPatch
     /// <summary>
     /// Sorts an inventory in place: stacks of the same item are merged, then everything is laid
     /// out row by row by kind (weapons, shields, tools, armour, belts and trinkets, ammunition,
-    /// food, materials, trophies, the rest), name and quality. Rows above a chosen one and items a
-    /// caller wants kept are not touched and keep their slot; the rest flows around them.
+    /// food, materials, trophies, the rest), name and quality. Materials come first by whether a
+    /// portal carries them, then by family and depth in the crafting tree (see
+    /// <see cref="MaterialOrder"/>), and only then by name - so metals sit with metals and logs
+    /// with logs. Rows above a chosen one and items a caller wants kept are not touched and keep
+    /// their slot; the rest flows around them.
     /// </summary>
     internal static class InventorySorter
     {
@@ -59,6 +62,7 @@ namespace OdinsMissingPatch
                 return false;
             }
 
+            MaterialOrder.Prepare();
             movable.Sort(Compare);
             List<ItemDrop.ItemData> merged = Merge(movable, all);
             for (int i = 0; i < merged.Count; i++)
@@ -142,6 +146,22 @@ namespace OdinsMissingPatch
             {
                 return order;
             }
+            if (a.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Material
+                && b.m_shared.m_itemType == ItemDrop.ItemData.ItemType.Material)
+            {
+                // Everything a portal refuses in one block at the end of the materials, then the
+                // crafting tree's own grouping; the name only settles what it leaves tied.
+                order = Portable(a).CompareTo(Portable(b));
+                if (order != 0)
+                {
+                    return order;
+                }
+                order = MaterialOrder.Compare(a, b);
+                if (order != 0)
+                {
+                    return order;
+                }
+            }
             order = string.Compare(DisplayName(a), DisplayName(b), StringComparison.CurrentCultureIgnoreCase);
             if (order != 0)
             {
@@ -154,6 +174,12 @@ namespace OdinsMissingPatch
             }
             order = a.m_variant.CompareTo(b.m_variant);
             return order != 0 ? order : b.m_stack.CompareTo(a.m_stack);
+        }
+
+        /// <summary>0 for what a portal takes, 1 for the ores and bars it does not.</summary>
+        private static int Portable(ItemDrop.ItemData item)
+        {
+            return item.m_shared.m_teleportable ? 0 : 1;
         }
 
         /// <summary>The name as the player reads it, so the order matches the tooltips, not the tokens.</summary>

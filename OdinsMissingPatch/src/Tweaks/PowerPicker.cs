@@ -14,8 +14,8 @@ namespace OdinsMissingPatch
     ///
     /// Only the choice is moved. The power is still cast by the game's own key, the cooldown is
     /// still the one you were already on (switching does not reset it, exactly as switching at the
-    /// stones does not), and the category is not there at all until a power has been taken at the
-    /// stones once - the game writes that into the character on the way, which is what this reads.
+    /// stones does not), and a boss you have not beaten is not in the list - so the category is
+    /// not there at all until the first one falls.
     /// </summary>
     internal sealed class PowerPicker : Tweak
     {
@@ -41,15 +41,35 @@ namespace OdinsMissingPatch
         // ---- What is unlocked ------------------------------------------------------------------
 
         /// <summary>
-        /// The boss powers this character may choose from, in the game's own order. Taking a
-        /// power at a sacrificial stone goes through <c>Player.SetGuardianPower</c>, which writes
-        /// the power's name into the character's unique keys, so those keys are the record of
-        /// what has ever been unlocked; a key naming a status effect with a cooldown - the one
-        /// field only a guardian power fills in - is one of them.
+        /// The key each power's boss sets when it dies, read off the boss prefabs themselves -
+        /// none of these follow from the power's name, and the game keeps the pairing nowhere a
+        /// mod can reach it: the stone at the temple names the power, the boss names the key, and
+        /// only the trophy in between ties the two together. The Deep North king sets
+        /// <c>defeated_frozenking</c> but has neither stone nor power yet, so it is not here.
+        /// </summary>
+        private static readonly Dictionary<string, string> BossKeys = new Dictionary<string, string>
+        {
+            { "GP_Eikthyr", "defeated_eikthyr" },
+            { "GP_TheElder", "defeated_gdking" },
+            { "GP_Bonemass", "defeated_bonemass" },
+            { "GP_Moder", "defeated_dragon" },
+            { "GP_Yagluth", "defeated_goblinking" },
+            { "GP_Queen", "defeated_queen" },
+            { "GP_Fader", "defeated_fader" },
+        };
+
+        /// <summary>
+        /// The boss powers this character may choose from, in the game's own order. A status
+        /// effect with a cooldown is a guardian power - the one field only a guardian power fills
+        /// in - and it is unlocked once its boss has fallen, which is the same moment the stone
+        /// at the temple would start offering it.
         ///
-        /// The power the character is carrying is counted whether or not it left a key behind, so
-        /// that a character who took one before the game started writing those keys, or through
-        /// another mod, never finds their own power missing from the list.
+        /// A dying boss writes its key twice: into the world, and into the unique keys of every
+        /// character standing near enough to see it. Both are read, so the power is there whether
+        /// you killed the boss in this world or brought the character from the world where you
+        /// did. A power the character is already carrying, or has taken at a stone before, counts
+        /// on its own - <c>Player.SetGuardianPower</c> leaves the power's name among those same
+        /// unique keys - which is what keeps a power another mod handed out from going missing.
         /// </summary>
         private static List<StatusEffect> Unlocked()
         {
@@ -64,12 +84,25 @@ namespace OdinsMissingPatch
             foreach (StatusEffect effect in db.m_StatusEffects)
             {
                 if (effect != null && effect.m_cooldown > 0f
-                    && (player.HaveUniqueKey(effect.name) || effect.name == current))
+                    && (effect.name == current || player.HaveUniqueKey(effect.name)
+                        || BossDefeated(player, effect.name)))
                 {
                     powers.Add(effect);
                 }
             }
             return powers;
+        }
+
+        /// <summary>Whether a power's boss has fallen, to this world or to this character.</summary>
+        private static bool BossDefeated(Player player, string power)
+        {
+            string key;
+            if (!BossKeys.TryGetValue(power, out key))
+            {
+                return false;
+            }
+            ZoneSystem zones = ZoneSystem.instance;
+            return (zones != null && zones.GetGlobalKey(key)) || player.HaveUniqueKey(key);
         }
 
         /// <summary>The power the character is carrying, or "" - the game's own answer.</summary>
@@ -113,8 +146,8 @@ namespace OdinsMissingPatch
                 {
                     return;
                 }
-                // A character that has never taken a power at a stone has nothing to choose
-                // between, and an empty category would only be a dead end.
+                // A character who has not beaten a boss yet has nothing to choose between, and an
+                // empty category would only be a dead end.
                 if (RadialData.SO == null || RadialData.SO.GroupElement == null || Unlocked().Count == 0)
                 {
                     return;

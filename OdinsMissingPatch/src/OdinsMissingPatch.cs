@@ -25,6 +25,7 @@ namespace OdinsMissingPatch
             MistClearRange.Instance,
             CombatStamina.Instance,
             InstantComfort.Instance,
+            FiresideHealing.Instance,
             FastPortals.Instance,
             KeepGearOnDeath.Instance,
             AreaRepair.Instance,
