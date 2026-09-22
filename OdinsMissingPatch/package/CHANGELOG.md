@@ -23,15 +23,34 @@
   out of this. The range is configurable.
 - Quick stack: a hotkey (. by default) stacks your inventory into the chests around you that
   already hold each item. Every chest that took something glows and shows how many it took.
-  Alt-click an item to mark it as a favourite, which keeps it out of quick stacking; equipped
-  items and the hotbar stay too. Hotkey, modifier, range and the hotbar are configurable.
+  Alt-click an item in your inventory to mark it as a favourite, which keeps it out of quick
+  stacking; equipped items and the hotbar stay too. A favourite only holds while the stack is
+  yours — put it in a chest, leave it in your grave or drop it and the mark is gone. Hotkey,
+  modifier, range and the hotbar are configurable.
 - Nearby fuel: adding fuel to a fire, smelter, oven or shield generator by hand takes it from a
   chest around you when your backpack has none. Nothing refuels itself.
+- Add all: Shift + Use on a fire, smelter, oven, cooking station, shield generator or ballista
+  puts in everything that fits, instead of one. Fuel, ore, food and bolts all come out of your
+  backpack first and then out of the chests around you, without your opening them. The hover
+  text says what would go in, and the range is configurable.
 - Auto repair: opening a crafting station repairs everything you carry that it can repair, so
   the forge mends what belongs to the forge the moment you walk up to it.
 - Area repair: one swing of the hammer repairs every damaged piece around the one you aim at,
   closest first, for the usual cost per piece. The radius is configurable, and holding Left Alt
   repairs the single piece you aim at as before.
+- Chest buttons: the chest panel's Take all and Stack all become five icon buttons beside the
+  panels: fill your stacks from the chest beside your inventory, between armour and weight;
+  take all, place all, fill the chest's stacks from your backpack and sort the chest in a
+  column down the side of the chest. Putting things in leaves worn gear, favourites and the
+  hotbar alone.
+- Inventory buttons: a stack nearby button (quick stack by click, while no chest is open) and a
+  sort button in a column beside your inventory, between the armour and the weight. Sort merges
+  your stacks and orders them by kind and name, leaving favourites and the hotbar where they
+  are.
+- Power picker: a Forsaken powers category in the radial menu, holding every boss power you have
+  unlocked with its own icon. Pick one and it is the power your power key casts, without the trip
+  back to the sacrificial stones. The category shows the power you are carrying, and the cooldown
+  you are on carries over, so switching mid cooldown buys you nothing.
 
 ## 0.1.0
 

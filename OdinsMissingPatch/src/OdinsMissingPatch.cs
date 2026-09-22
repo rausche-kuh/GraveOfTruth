@@ -31,7 +31,11 @@ namespace OdinsMissingPatch
             NearbyCrafting.Instance,
             QuickStack.Instance,
             NearbyFuel.Instance,
+            AddAll.Instance,
             AutoRepair.Instance,
+            ChestButtons.Instance,
+            InventoryButtons.Instance,
+            PowerPicker.Instance,
         };
 
         void Awake()

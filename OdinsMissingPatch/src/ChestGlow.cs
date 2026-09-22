@@ -10,7 +10,7 @@ namespace OdinsMissingPatch
     /// </summary>
     internal sealed class ChestGlow : MonoBehaviour
     {
-        private const float Duration = 3f;
+        private const float Duration = 7f;
         private static readonly Color Gold = new Color(1f, 0.78f, 0.25f);
 
         private float time;

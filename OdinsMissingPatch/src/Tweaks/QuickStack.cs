@@ -14,8 +14,9 @@ namespace OdinsMissingPatch
     /// anything marked as a favourite: a modifier-click on an item in the inventory marks it with
     /// a golden frame, and quick stacking leaves it alone.
     ///
-    /// A favourite is a flag on the stack itself, so it follows the stack into a chest and back
-    /// and can be cleared there; splitting a favourite makes two.
+    /// A favourite is a flag on the stack itself and only means anything in your own backpack:
+    /// it can only be set there, and a stack that leaves it — into a chest, into the grave your
+    /// death fills, onto the ground — loses the mark. Splitting a favourite makes two.
     /// </summary>
     internal sealed class QuickStack : Tweak
     {
@@ -87,7 +88,8 @@ namespace OdinsMissingPatch
             }
         }
 
-        private void Stack(Player player)
+        /// <summary>The whole action, for the hotkey and for the inventory panel's Stack nearby button.</summary>
+        internal void Stack(Player player)
         {
             Inventory backpack = player.GetInventory();
             List<Container> chests = new List<Container>(NearbyChests.Find(player.transform.position, range.Value));
@@ -193,7 +195,9 @@ namespace OdinsMissingPatch
         {
             private static bool Prefix(InventoryGrid __instance, UIInputHandler clickHandler)
             {
-                if (!Instance.On || !Hotkeys.Held(Instance.favoriteModifier.Value) || __instance.m_inventory == null)
+                Player player = Player.m_localPlayer;
+                if (!Instance.On || player == null || __instance.m_inventory == null
+                    || !Hotkeys.Held(Instance.favoriteModifier.Value))
                 {
                     return true;
                 }
@@ -203,10 +207,64 @@ namespace OdinsMissingPatch
                 {
                     return true;
                 }
+                if (__instance.m_inventory != player.GetInventory())
+                {
+                    // A mark set anywhere else is stripped again the moment that inventory
+                    // changes, so refuse the click and say why instead of doing nothing.
+                    player.Message(MessageHud.MessageType.Center, "Favourites only in your inventory");
+                    return false;
+                }
                 SetFavorite(item, !IsFavorite(item));
-                // Saves the flag with the chest, or re-weighs the backpack; both harmless.
+                // Re-weighs the backpack; harmless.
                 __instance.m_inventory.Changed();
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Every way out of the backpack but one ends in another inventory, and every inventory
+        /// raises Changed once it has taken an item — a drag, Place all, a quick stack, the grave
+        /// a death fills all pass through here, before a container saves itself — so that is the
+        /// one place the mark has to come off. While there is no local player their own inventory
+        /// is the one being loaded, so nothing is touched then.
+        /// </summary>
+        [HarmonyPatch(typeof(Inventory), "Changed")]
+        private static class ClearOutsideBackpack
+        {
+            private static void Prefix(Inventory __instance)
+            {
+                Player player = Player.m_localPlayer;
+                if (!Instance.On || player == null || __instance == player.GetInventory())
+                {
+                    return;
+                }
+                foreach (ItemDrop.ItemData item in __instance.GetAllItems())
+                {
+                    if (IsFavorite(item))
+                    {
+                        SetFavorite(item, false);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// The one way out no inventory sees: a dropped stack is a clone of its own, living in
+        /// its own ZDO. The drop has already saved it by the time this runs, so clearing the
+        /// mark needs a second save.
+        /// </summary>
+        [HarmonyPatch(typeof(ItemDrop), "DropItem")]
+        private static class ClearOnDrop
+        {
+            private static void Postfix(ItemDrop __result)
+            {
+                if (!Instance.On || __result == null || __result.m_itemData == null
+                    || !IsFavorite(__result.m_itemData))
+                {
+                    return;
+                }
+                SetFavorite(__result.m_itemData, false);
+                __result.Save();
             }
         }
 

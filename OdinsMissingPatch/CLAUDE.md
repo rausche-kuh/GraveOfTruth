@@ -26,17 +26,44 @@ default) of the one the player aims at, closest first, at the game's own cost pe
 world state through the game's own `WearNTear.Repair` RPC, so it needs no server install.
 Nearby crafting — the game's requirement checks and spends see the player-placed chests within a
 configurable range (20m) as part of the backpack, backpack paying first; an ingredient amount
-the chests have to pay for shows yellow, and its tooltip lists carried vs. in chests. Quick stack — a hotkey
-(. by default; G is bound by the game) moves every carried stack into the nearest chest in range that already holds that item, with a
-glow and a floating count per chest; an Alt-click marks a stack as a favourite (golden frame),
-which quick stacking skips, as it does equipped items and the hotbar. Nearby fuel — the four
+the chests have to pay for shows yellow, and its tooltip lists carried vs. in chests. Quick stack —
+a hotkey (`.` by default; G is bound by the game) moves every carried stack into the nearest chest
+in range that already holds that item, with a three-second glow and a floating count per chest;
+an Alt-click in the player's own inventory marks a stack as a favourite (golden frame),
+which quick stacking skips, as it does equipped items and the hotbar; the mark exists only in
+that inventory and is stripped from every stack that leaves it. Nearby fuel — the four
 manual add-fuel interactions (fire, smelter, oven, shield generator) see the chests the same way,
-so a unit comes out of a chest when the backpack has none; nothing refuels itself. All three
+so a unit comes out of a chest when the backpack has none; nothing refuels itself. All of them
 write chest inventories, which is world state, see below; a "Nearby use" button in the chest
-panel keeps a chest out of all three. Auto repair — pressing Use on a crafting station
+panel keeps a chest out of all of them. Add all — Shift + Use (the `alt` flag of
+`Interactable.Interact`) on a `Fireplace`, a `Smelter` switch (ore or fuel), a `CookingStation`
+(fuel switch, food switch or the spit itself), a `ShieldGenerator` switch or a `Turret` puts in
+min(room under the cap, carried) units through the station's own add RPC, one call per unit
+(`RPC_AddFuelAmount` once for a fire). Fuel, ore, food and bolts alike are counted and paid
+through a reach of its own (`NearbyChests.EnterReach`, its own range), opened around each plan
+and around each spend, so the backpack pays first and the chests around the player pay the rest;
+the two lookups the reach does not widen (`GetItem` for an ore's cheat flag,
+`Turret.FindAmmoItem` for the bolt type) fall back to walking the chests themselves. It hands
+the Use back to the game only when the game would do exactly the same - nothing goes in, or the
+single unit that fits is in the backpack anyway - so the vanilla messages explain a full station
+or an empty backpack. Auto repair — pressing Use on a crafting station
 repairs every worn item in the inventory that station could repair, asking the crafting
 panel's own `CanRepair` per item, instead of one item per click of the repair button.
-Client side, and repairing is free in vanilla, so there is nothing to pay.
+Client side, and repairing is free in vanilla, so there is nothing to pay. Chest buttons — the
+chest panel's Take all and Stack all give way to five icon buttons, copies of the Take all button
+with an icon from `assets/icons/` in place of the label, placed beside the panels rather than on
+them: fill your stacks from the chest in the column beside the inventory panel (between the
+armour and weight boxes, shared with Inventory buttons); take all, place all, fill the chest's stacks from the backpack
+and sort the chest in a column beside the chest panel, from its top down;
+the two that put things in skip worn gear, favourites and (a switch) the hotbar. Inventory
+buttons — stack nearby (quick stacking by click, shown while that tweak is on and no chest is
+open) and sort, in the same column. The sort (`InventorySorter`) merges stacks and lays out by
+kind, name and quality, leaving favourites and, by default, the hotbar in place. Both client
+side; the chest writes go to the open chest, which the local client owns while the panel shows.
+Power picker — a ninth element in the radial menu's top level, a Forsaken powers group whose sub
+menu holds one element per unlocked boss power, with the power's own `StatusEffect` icon; picking
+one calls `Player.SetGuardianPower`, the same call the sacrificial stone makes. Client side, and
+it writes nothing but the character's own guardian power.
 
 | Path | What |
 | --- | --- |
@@ -46,6 +73,9 @@ Client side, and repairing is free in vanilla, so there is nothing to pay.
 | `src/NearbyChests.cs` | Shared by the three chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag with its panel button and hover line. |
 | `src/ChestGlow.cs` | The golden pulse plus floating text on a chest (`ChestGlow.Flash`), for quick stack and anything that later needs to point at a chest. |
 | `src/Hotkeys.cs` | `Pressed` / `Held` for a `KeyboardShortcut`, read through `ZInput`. |
+| `src/PanelButtons.cs` | Icon buttons for the inventory screen, cut from the chest panel's Take all button: creation, the icon loader (`assets/icons/`), where a panel's border is, the shared row beside the inventory panel and the column beside the chest panel. Used by ChestButtons, InventoryButtons and the Nearby use button. |
+| `src/InventorySorter.cs` | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps. |
+| `assets/icons/` | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
 ## Conventions
@@ -109,13 +139,45 @@ Client side, and repairing is free in vanilla, so there is nothing to pay.
   finalizer rather than a postfix because Harmony skips postfixes when the original throws, and
   a reach left open would make every later backpack read see the chests. Nothing outside an
   opened reach touches a chest, so "which actions" is the whole design decision of such a tweak,
-  and each is named in the tweak. Nested reaches keep the innermost range.
+  and each is named in the tweak. Reaches nest (AddAll draws up its plan inside the scope
+  NearbyFuel opened on the same Use): the innermost range is in force, and the one around it is
+  back once it closes.
 - Shared code that is not a tweak (`NearbyChests`) may hold patches of its own when the thing
   they serve belongs to no single tweak (the registry, the opt-out button); they gate on
   `NearbyChests.AnyTweakOn` rather than on one tweak.
 - Every chest write goes through `NearbyChests.Claim`: re-checks the in-reach rule (someone may
   have opened the chest since it was found), reloads the inventory from the ZDO, then claims
-  ownership. `Find` hands out one reused list, so copy it before a loop that writes.
+  ownership. `Find` hands out one reused list, so copy it before a loop that writes. The one
+  exception is the chest open in the panel (`ChestButtons`): the panel only shows while the
+  local client owns it, so its buttons write straight to it, as the game's own two do.
+- A button in the inventory screen comes from `PanelButtons.Create`, a copy of the chest
+  panel's Take all button with the label blanked and an icon in its place, so it keeps the
+  game's skin and sounds without a prefab of our own. Buttons go *beside* the panels, never on
+  them - the panels are grid to the edge, and anything on them covers a slot. They hang off the
+  panel's top right corner, outside its border: `PanelButtons.Pin` works in the parent's
+  bottom-left space so anchors do not matter, `ColumnLeft` is the x every button's left edge
+  starts at (past the panel's stretched `Bkg` border plus a gap - not lined up with the armour
+  and weight boxes, whose rects overlap that border) and `ColumnTop` the y the first button's
+  top edge sits at (level with the border's top). Buttons beside the inventory panel `Enlist`
+  in one column that `LayoutInventoryColumn` centres in the gap between the armour box and
+  the weight box (found through the `m_armor` / `m_weight` texts' parents by reflection, or
+  the panel's `Armor` / `Weight` children, their edges taken in panel space so anchoring does
+  not matter), active buttons only, so it closes up around whatever a tweak hides - at most
+  two show at once, since fill your stacks (chest open) and stack nearby (no chest) never
+  meet, and two is all the gap holds; the chest's four stand in one column from the top down
+  (`LayoutChestColumn`). Each owner places from its
+  per-frame postfix (`UpdateContainer`, `UpdateInventory`) rather than once at creation, since
+  buttons come and go with their tweaks and the panel resizes with the inventory. The Nearby
+  use button takes the game's Take all spot (top left of the chest panel) while
+  `ChestButtons.HidesVanilla`, else the top of that column; it is widened to its label's TMP
+  `preferredWidth` (reflection) plus a margin each side, since the label outgrows Take all.
+  Cancel any drag first (`SetupDragItem(null, null, 1)`), as the game's buttons do, so a held
+  item is not moved under the cursor.
+- A sort never adds or drops a unit: `InventorySorter` merges by the game's own stack rule plus
+  variant and custom data (so a tagged stack never swallows a plain one), refuses without
+  touching anything when the free slots would not hold the items, and only ever writes
+  `m_gridPos` and `m_stack` before one `Changed()`. Items above the chosen row and items the
+  caller keeps hold their slot; the rest flows around them.
 
 ## Game facts worth keeping
 
@@ -278,6 +340,16 @@ Client side, and repairing is free in vanilla, so there is nothing to pay.
 - `ItemData.m_customData` is a string dictionary saved with the item (inventory blob, character
   file, dropped item) and copied by `Clone()`, so it is the place for a per-stack flag
   (`QuickStack`'s favourite); splitting a stack copies the flag.
+- To keep such a flag inside the player's backpack, the one choke point is the private
+  `Inventory.Changed(bool, bool)`: every add, every `MoveItemToThis`, `MoveAll`, `Load` and
+  `RemoveAll` ends there, and a container saves from its `m_onChanged`, so a prefix that strips
+  the flag from any inventory that is not `Player.m_localPlayer.GetInventory()` catches every
+  route in and runs before the save. It has to bow out while `m_localPlayer` is null, since
+  `Game.SpawnPlayer` only sets the local player before `LoadPlayerData`, and a null there would
+  mean wiping the flags out of the character file as it loads. The ground is the exception:
+  `Humanoid.DropItem` hands a `Clone()` to the static `ItemDrop.DropItem`, which saves it to its
+  own ZDO, so that one needs a postfix that clears the flag on `__result.m_itemData` and calls
+  `Save()` again.
 - The requirement checks, and where each spends: `Player.HaveRequirementItems` (private; counts
   per quality level 1..max and takes the best) behind `HaveRequirements(Recipe, ...)`, which with
   `discover: true` reads `m_knownMaterial` and no inventory; `HaveRequirements(Piece, mode)` for
@@ -298,6 +370,18 @@ Client side, and repairing is free in vanilla, so there is nothing to pay.
   `HaveItem(name)` then `RemoveItem(name, 1)` on the user's inventory and an `RPC_AddFuel`; the
   game refuses once `fuel > maxFuel - 1`. `Fireplace.UseItem` is the hotbar drop and takes the
   item it is given. A kiln is a `Smelter` with no `m_fuelItem` (its wood is the ore).
+- The add RPCs run on the station's owner and, for `Smelter`, `CookingStation` and
+  `ShieldGenerator`, do not clamp (`SetFuel(fuel + 1)`; `RPC_AddOre` and `RPC_AddItem` do check
+  the queue and the free slot), so a non-owner that sends more than the room it saw overfills;
+  `Fireplace.RPC_AddFuelAmount(float)` clamps to the cap. `ZRoutedRpc` handles an RPC to
+  oneself synchronously, so on the owner the ZDO has moved by the time `InvokeRPC` returns.
+- `Switch` is the Use target of a smelter's ore and fuel hoppers, an oven's fuel and food, a
+  shield generator's fuel: `Switch.Interact` ignores `alt` and calls `m_onUse(this, user, null)`;
+  the owning component sits on a parent (`GetComponentInParent`), and the switch is told apart
+  by reference (`m_addWoodSwitch`, `m_addOreSwitch`, `m_addFuelSwitch`, `m_addFoodSwitch`).
+  `Player.Update` passes `alt` as `AltPlace` (Shift) held, or `JoyAltKeys` on a non-classic
+  gamepad layout; hover text writes it as `$KEY_AltPlace + $KEY_Use` (`ItemStand`, `Sadle`,
+  `Tameable`). `Fireplace.Interact` with `alt` refuels a fire that could otherwise be toggled.
 - `MaterialMan.instance.SetValue(go, ShaderProps._EmissionColor / _Color, color)` and
   `ResetValue` tint every renderer under `go` through a property block, which is how
   `WearNTear.Highlight` flashes a piece; `ShaderProps` is in `assembly_utils`. A ship's hold has
@@ -318,7 +402,76 @@ Client side, and repairing is free in vanilla, so there is nothing to pay.
   shown from `UpdateContainer` only while `m_currentContainer.IsOwner()`, so a flag set on the
   open chest's ZDO from there always sticks. TextMeshPro is not among the staged reference
   assemblies (`lib/`), so a copied button's label is set through its `text` property by
-  reflection rather than through `TMP_Text`.
+  reflection rather than through `TMP_Text`; its colour is the `Graphic.color` every UI text
+  has, which is what tints a button's icon to match. `OnTakeAll` / `OnStackAll` are the two
+  buttons' handlers (private, publicized): `Inventory.MoveAll(from)` is take all, and
+  `Inventory.StackAll(from)` moves what `this` already holds by name, skipping only what the
+  local player has equipped - so the game's Stack all empties the hotbar too. Both cancel a
+  drag first with `SetupDragItem(null, null, 1)`. `InventoryGui.UpdateInventory(Player)`
+  refreshes the backpack grid every frame the screen is up; `m_player` is the inventory panel's
+  `RectTransform`, `m_container` the chest panel's. An item's slot is nothing but
+  `m_gridPos`; the grid redraws from it on its next `UpdateGui`, so a sort is setting positions
+  and one `Changed()`.
+- The inventory screen's geometry (from the `_GameMain` prefab, see the workspace CLAUDE.md for
+  how to read it): the `Player` panel is 570x287 (taller with more rows, `SetInventorySize`),
+  its grid fills it to the edges, and the `Container` panel is a child of it, 570x340, hung
+  30px below. Each panel's visible background is a stretched `Bkg` child with a 20px size delta,
+  so it reaches 10px past the rect on every side. The armour box (80x64) and weight box (80x64)
+  hang centred 32px right of the inventory panel's rect, anchored at its right edge at half
+  height (armour) and at the bottom (weight), with a 91px gap between them - so their rects
+  start 8px inside the panel and overlap its border, which is why buttons are placed from the
+  border rather than from the boxes. The 91px between the armour box's bottom and the weight
+  box's top is just room for a column of two 40px buttons with a 6px gap, and there is no room
+  above the armour box (40px to the rect top) for a third; the chest's weight box (80x60)
+  sits at the bottom of the same column beside the chest panel, well clear of a column of
+  four from the top. On the chest panel's top 46px band: Take all
+  (133x40) at the left, the name centred, Stack all at the right - there is no free width on
+  it. All of this is anchored to a point, so a rect's centre from its parent's bottom left is
+  `anchor * parentSize + anchoredPosition + (0.5 - pivot) * size`.
+- `UITooltip` (assembly_guiutils) shows nothing without an `m_tooltipPrefab`; the slot prefab
+  (`InventoryGrid.m_elementPrefab`, `InventoryElement.m_tooltip`) has one to borrow for a
+  button copied without a tooltip. `m_topic` is the header line, `m_text` the body.
+- `UnityEngine.ImageConversionModule`, where `Texture2D.LoadImage` lives, is built against
+  netstandard 2.1 and cannot be referenced from a net472 build (CS1705); `PanelButtons.LoadPng`
+  reaches `ImageConversion.LoadImage` by reflection instead. Everything else in `lib/` binds.
+- The radial menu (`Valheim.UI`, `Hud.m_radialMenu`, opened on `OpenRadial` = G) is built from
+  configs rather than from a prefab, which is what makes it extensible without an asset. An
+  `IRadialConfig` is `LocalizedName` + `Sprite` + `InitRadialConfig(RadialBase)`, and the last
+  builds a `List<RadialMenuElement>` and ends in `radial.ConstructRadial(list)`. The game's own
+  configs are ScriptableObjects only because they are authored in the editor - the interface asks
+  for nothing of the sort, so a plain class is a page of the menu. `RadialData.SO` holds the
+  element prefabs (`GroupElement` opens a config, `EmoteElement` is a leaf with an icon,
+  `EmptyElement`, `BackElement`, `ItemElement`) and `MainGroupConfig`, the `ValheimRadialConfig`
+  that is the top level ring. So a category of one's own is: a prefix on `ConstructRadial` that
+  adds an instantiated `GroupElement` to `elements` while `radial.CurrentConfig is
+  ValheimRadialConfig` (the list is still the caller's there; by the postfix it has been laid
+  out), `GroupElement.Init(config, radial.CurrentConfig, radial)` to point it at the page and
+  back at the ring, and the page's own `InitRadialConfig` for the leaves. Everything is rebuilt
+  on every open, so nothing has to be cached or invalidated.
+- A `RadialMenuElement` is three things: `Name` and `SubTitle` (what the middle of the ring reads
+  while it is hovered - `protected set`, reachable thanks to the publicizer), `Icon` (the `Image`
+  to give a sprite and a colour) and `Interact` / `CloseOnInteract` (what it does, and whether
+  doing it shuts the menu). `Init` on each prefab only fills those in for its own purpose, so an
+  element of another kind sets them itself instead of calling it. `ConstructRadial` destroys the
+  previous elements by walking `m_elementContainer`'s children, and new ones are still unparented
+  at that point, so building them in a prefix is safe. The radial keeps the last element
+  interacted with as `LastUsed` and `ValheimRadialConfig` puts it back in the top level ring - it
+  survives the menu it was built in (`GroupElement`s are exempt), so a leaf that draws its own
+  state has to keep it right after its `Interact`.
+- `RadialBase.SetElementsPerLayer` rounds the count up to the next value of
+  `RadialData.SO.MaxElementsRange` (`{ 8, 12 }`), so the vanilla eight top level elements fill a
+  ring of 8 exactly and a ninth turns it into nine of twelve: an arc, with `CenterBackButton`
+  moving the first element to the middle to centre it. That is the game's own look for any page
+  with fewer elements than its ring, so it costs nothing but a wider top level.
+- A guardian power is a `StatusEffect` in `ObjectDB.m_StatusEffects` named `GP_<Boss>`, told
+  apart by `m_cooldown`, the one field under its `__Guardian power__` header. The player holds
+  one: `m_guardianPower` (the name), `m_guardianPowerHash` and `m_guardianSE`, all set by
+  `SetGuardianPower(string)` and saved with the character. `ItemStand.DelayedPowerActivation` is
+  the only vanilla caller, i.e. pressing Use on a sacrificial stone, and `SetGuardianPower` also
+  calls `AddUniqueKey(name)` - so the character's unique keys are the record of every power ever
+  taken, which is what "unlocked" means. `m_guardianPowerCooldown` is a timer on the *player*,
+  counted down by `UpdateGuardianPower` and only ever set by `ActivateGuardianPower`, so
+  switching powers neither resets nor dodges it. Nothing about any of this crosses the network.
 
 ## References
 

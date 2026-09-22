@@ -66,19 +66,51 @@ its own section in the config file and can be turned off on its own. Nothing nee
   player count, never a dungeon's or a ruin's, and every chest gets a **Nearby use** button in
   its panel that keeps it out of all of this — for the chest you keep your emergency wood in.
   The range is yours to set, 20m by default.
-- **Quick stack** — one key (`G` by default) stacks your inventory away into the chests around
+- **Quick stack** — one key (`.` by default) stacks your inventory away into the chests around
   you: every stack you carry goes to the nearest chest that already holds that item, topping up
   its stacks before taking a free slot. Each chest that took something glows and shows how many
   it took, and a message sums it up. Equipped items stay, the hotbar stays (a switch), and so
   does anything you mark as a favourite: hold `Alt` and click an item in the inventory to give
-  it a golden frame, and quick stacking leaves it alone. The favourite is on the stack itself,
-  so it follows the stack into a chest and back. The key, the modifier and the range are
-  configurable.
+  it a golden frame, and quick stacking leaves it alone. A favourite lives in your inventory
+  and nowhere else: the mark can only be set there, and a stack that leaves you — into a chest,
+  into your grave, onto the ground — comes out of it plain. The key, the modifier and the range
+  are configurable.
 - **Nearby fuel** — adding fuel by hand reaches into the chests around you. Press Use on a fire,
   a smelter, an oven or a shield generator as you always have: one unit goes in, out of your
   backpack if you carry the fuel and out of the nearest chest that holds it if you do not.
   Nothing refuels itself; a station only ever takes fuel when you give it some. Same chests as
   nearby crafting, same button to keep one out of it, its own range.
+- **Add all** — hold `Shift` and press Use on a fire, a smelter, a blast furnace, an oven, a
+  cooking station, a shield generator or a ballista, and everything that fits goes in at once:
+  wood up to the fire's cap, ore up to the smelter's queue, food into every free slot, bolts up
+  to the magazine. Use alone still adds one, as ever. The hover text tells you what a
+  `Shift` + Use would put in, count and all, so you know before you press. Fuel, ore, food and
+  bolts all come out of your backpack first and then out of the chests around you, so a smelter
+  fills from the chest you keep the ore in without your opening it. Same chests as nearby
+  crafting, same button to keep one out of it, its own range.
+- **Chest buttons** — the chest panel's Take all and Stack all become five icon buttons beside
+  the panels, each with a tooltip. Beside your inventory, between armour and weight: **Fill your
+  stacks**, which brings you what the chest holds of the items you carry. In a column down the
+  side of the chest, from its top: **Take all**; **Place all**, which puts everything you carry
+  into the chest; **Fill the chest's stacks**, which puts in what you carry of the items the
+  chest holds; and **Sort the chest**, which merges its stacks and orders them by kind and
+  name. The two that put things in leave worn gear, favourites and the hotbar alone (the hotbar
+  is a switch). Switch the tweak off and the game's two buttons are back.
+- **Inventory buttons** — two icon buttons in a column beside your inventory, between the
+  armour and the weight: **Stack nearby**, which is quick stack by click and is there while quick stack is on
+  and no chest is open (with a chest open, Fill your stacks stands in its place), and **Sort**,
+  which merges your stacks and orders the rows below the hotbar by kind (weapons, shields,
+  tools, armour, ammunition, food, materials, trophies, the rest), then name, then quality.
+  Favourites keep their slot and so does the hotbar (a switch).
+- **Power picker** — a **Forsaken powers** category in the radial menu, so the boss power you
+  carry is a choice you make where you stand instead of a walk back to the sacrificial stones.
+  Opening it shows one ring element per power you have unlocked, each with the boss's own icon
+  and its description; pick one and it is what your power key casts from then on. The one you
+  are already carrying is gold and says so, and it is the icon the category itself wears, so the
+  ring tells you which power you are on before you open it. Nothing else about the powers
+  changes: the cooldown is a timer on you rather than on the power, so it carries straight over
+  and switching mid cooldown buys you nothing, and a power you have never taken at its stone is
+  not in the list. A character who has never taken one has no category at all.
 
 ## Configuration
 
@@ -89,10 +121,11 @@ mod. Every tweak has an `Enabled` switch and its own settings — for the range 
 of item types that stay with you, with every type the game knows listed in the setting's
 description; for area repair the radius in metres and the key that holds it back to one piece; for
 the nearby chest tweaks the range in metres, and for quick stack the hotkey, the favourite modifier
-and whether the hotbar is stacked away too. Instant comfort and auto repair have nothing but
-their switch. Changes are picked up while the game is running,
-including from an in-game config manager: stations already standing around you are re-measured on
-the spot.
+and whether the hotbar is stacked away too; for chest buttons whether the hotbar goes into the
+chest too, and for inventory buttons whether Sort touches the hotbar. Instant comfort, auto
+repair and the power picker have nothing but their switch. Changes are picked up while the game
+is running, including from an in-game config manager: stations already standing around you are
+re-measured on the spot.
 
 ## Multiplayer
 
@@ -123,12 +156,21 @@ game's own repair, one piece at a time, so it needs nothing from the server and 
 else. It pays the full cost for every piece and asks the same station and ward questions the game
 asks, so all it saves you is the clicking.
 
-Nearby crafting, quick stack and nearby fuel all write to chests, which is world state, and they
-do it the way you would by hand: the chest is taken over by your machine for the write, exactly
+Nearby crafting, quick stack, nearby fuel and add all write to chests, which is world state, and
+they do it the way you would by hand: the chest is taken over by your machine for the write, exactly
 as when you open it. A chest someone else has open is left alone, and so is one you could not
 open yourself — a private chest of theirs, or one inside a ward you have no access to. The
 "Nearby use" switch is stored with the chest, so it holds for everyone with the mod. None of it
-needs anyone else to have the mod, and none of it runs on a dedicated server.
+needs anyone else to have the mod, and none of it runs on a dedicated server. The chest buttons
+write to the chest you have open, which is yours while it is open, exactly as dragging items by
+hand is; the inventory buttons only touch your own backpack, apart from stack nearby, which is
+quick stack. Add all sends the station the same request the game sends for a single Use, once
+per item, so whoever runs the station applies it exactly as if you had pressed Use that many
+times; what it takes from chests it takes the way nearby crafting does.
+
+The power picker only writes to your own character. Which power you carry is saved with the
+character file and nothing else reads it, exactly as when you take one at the stones, so it needs
+nothing from the server and nothing from anyone else — and a player without the mod still walks.
 
 ## Install
 

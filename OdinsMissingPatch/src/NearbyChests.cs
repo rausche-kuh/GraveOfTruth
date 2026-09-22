@@ -1,6 +1,7 @@
 using HarmonyLib;
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -11,8 +12,8 @@ namespace OdinsMissingPatch
     /// up loaded is put on a list, and a query walks that list instead of the physics world. A
     /// chest is in reach when a player placed it, nobody has it open, the local player may open
     /// it (privacy setting, ward) and it has not been switched off with the button in its panel.
-    /// Shared by NearbyCrafting, QuickStack and NearbyFuel; owns the switch-off button and the
-    /// hover text line that goes with it, since the flag serves all three.
+    /// Shared by NearbyCrafting, QuickStack, NearbyFuel and AddAll; owns the switch-off button
+    /// and the hover text line that goes with it, since the flag serves all four.
     ///
     /// It also owns the reach: while a tweak has opened it, the three inventory methods the
     /// game's own actions go through (count, have, remove by name) treat the chests around the
@@ -37,7 +38,8 @@ namespace OdinsMissingPatch
         }
 
         internal static bool AnyTweakOn =>
-            NearbyCrafting.Instance.On || QuickStack.Instance.On || NearbyFuel.Instance.On;
+            NearbyCrafting.Instance.On || QuickStack.Instance.On || NearbyFuel.Instance.On
+            || AddAll.Instance.On;
 
         /// <summary>
         /// Every chest in reach within <paramref name="radius"/> of <paramref name="origin"/>,
@@ -188,30 +190,32 @@ namespace OdinsMissingPatch
 
         // ---- The reach: the backpack widened to the chests around the player ---------------
 
-        private static int reachDepth;
-        private static float reachRange;
+        /// <summary>One entry per open reach, its range; the innermost, i.e. the last, is in force.</summary>
+        private static readonly List<float> Reaches = new List<float>();
 
         /// <summary>
         /// Opens the reach for the game action about to run, at <paramref name="range"/> metres
         /// around the player. Pair with <see cref="LeaveReach"/> in a finalizer, so it closes
-        /// whether or not the action throws. Actions do not nest across tweaks, so the innermost
-        /// range simply wins while one is open.
+        /// whether or not the action throws. Reaches do nest - Add all draws up its plan inside
+        /// the scope NearbyFuel opened around the same Use - so the innermost range wins while it
+        /// is open and the one around it is back in force once it closes.
         /// </summary>
         internal static void EnterReach(float range)
         {
-            reachDepth++;
-            reachRange = range;
+            Reaches.Add(range);
         }
 
         internal static void LeaveReach()
         {
-            if (reachDepth > 0)
+            if (Reaches.Count > 0)
             {
-                reachDepth--;
+                Reaches.RemoveAt(Reaches.Count - 1);
             }
         }
 
-        private static bool InReach => reachDepth > 0;
+        private static bool InReach => Reaches.Count > 0;
+
+        private static float ReachRange => Reaches[Reaches.Count - 1];
 
         private static bool IsBackpack(Inventory inventory)
         {
@@ -267,7 +271,7 @@ namespace OdinsMissingPatch
                 int missing = amount - carried;
                 amount = carried;
                 Player player = Player.m_localPlayer;
-                List<Container> chests = new List<Container>(Find(player.transform.position, reachRange));
+                List<Container> chests = new List<Container>(Find(player.transform.position, ReachRange));
                 foreach (Container chest in chests)
                 {
                     if (missing <= 0)
@@ -289,22 +293,25 @@ namespace OdinsMissingPatch
                 }
                 counts.Clear();
             }
+        }
 
-            /// <summary>The backpack's own count, without going through the widened CountItems.</summary>
-            private static int Carried(Inventory inventory, string name, int quality, bool matchWorldLevel)
+        /// <summary>
+        /// What an inventory itself holds of an item, without going through the widened
+        /// CountItems - the backpack's own share of a reach.
+        /// </summary>
+        internal static int Carried(Inventory inventory, string name, int quality, bool matchWorldLevel)
+        {
+            int total = 0;
+            foreach (ItemDrop.ItemData item in inventory.GetAllItems())
             {
-                int total = 0;
-                foreach (ItemDrop.ItemData item in inventory.GetAllItems())
+                if (item.m_shared.m_name == name
+                    && (quality < 0 || item.m_quality == quality)
+                    && (!matchWorldLevel || item.m_worldLevel >= Game.m_worldLevel))
                 {
-                    if (item.m_shared.m_name == name
-                        && (quality < 0 || item.m_quality == quality)
-                        && (!matchWorldLevel || item.m_worldLevel >= Game.m_worldLevel))
-                    {
-                        total += item.m_stack;
-                    }
+                    total += item.m_stack;
                 }
-                return total;
             }
+            return total;
         }
 
         /// <summary>
@@ -328,7 +335,7 @@ namespace OdinsMissingPatch
                 return total;
             }
             Player player = Player.m_localPlayer;
-            foreach (Container chest in Find(player.transform.position, reachRange))
+            foreach (Container chest in Find(player.transform.position, ReachRange))
             {
                 total += chest.GetInventory().CountItems(name, quality, matchWorldLevel);
             }
@@ -405,15 +412,19 @@ namespace OdinsMissingPatch
 
         /// <summary>
         /// The button in the chest panel that switches a chest out of (and back into) nearby
-        /// use. It is a copy of the panel's own Take all button, placed to the left of the
-        /// leftmost of Take all and Stack all so it inherits their look and layout, and it is
-        /// only shown while at least one of the three tweaks is on.
+        /// use. It is a copy of the panel's own Take all button, so it inherits the look, and it
+        /// stands where that button stands - the panel's top left - while ChestButtons has it
+        /// hidden, else beside the panel at its top edge, where ChestButtons' column would
+        /// start. Its label is longer than Take all, so the button is widened to the label plus
+        /// a margin either side. It is only shown while at least one of the three tweaks is on.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
         private static class PanelButton
         {
             private static Button button;
             private static string label;
+            private static Component labelText;
+            private static PropertyInfo labelWidth;
 
             private static void Postfix(InventoryGui __instance)
             {
@@ -433,6 +444,71 @@ namespace OdinsMissingPatch
                 }
                 button.gameObject.SetActive(true);
                 SetLabel(IsExcluded(chest) ? "Nearby use: off" : "Nearby use: on");
+                Place(__instance);
+            }
+
+            /// <summary>The room between the label and each end of the button, in UI pixels.</summary>
+            private const float Margin = 16f;
+
+            /// <summary>
+            /// In the game's Take all spot, the top left of the chest panel, while ChestButtons
+            /// has that button hidden, with the left edge where Take all's is. Otherwise the
+            /// panel's top edge is full (Take all, the name, Stack all), so the button goes
+            /// beside the panel at its top, where ChestButtons' column would start. Every frame,
+            /// since ChestButtons comes and goes with its switch and the label with the chest.
+            /// </summary>
+            private static void Place(InventoryGui gui)
+            {
+                RectTransform rect = (RectTransform)button.transform;
+                RectTransform takeAll = gui.m_takeAllButton != null ? (RectTransform)gui.m_takeAllButton.transform : null;
+                if (takeAll == null)
+                {
+                    return;
+                }
+                float width = Mathf.Max(takeAll.rect.width, LabelWidth() + 2f * Margin);
+                float height = takeAll.rect.height;
+                rect.sizeDelta = new Vector2(width, height);
+                if (!ChestButtons.HidesVanilla)
+                {
+                    RectTransform panel = gui.m_container;
+                    PanelButtons.Pin(rect, new Vector2(
+                        PanelButtons.ColumnLeft(panel) + width * 0.5f,
+                        PanelButtons.ColumnTop(panel) - height * 0.5f));
+                    return;
+                }
+                rect.anchorMin = takeAll.anchorMin;
+                rect.anchorMax = takeAll.anchorMax;
+                rect.pivot = takeAll.pivot;
+                rect.anchoredPosition = takeAll.anchoredPosition
+                    + new Vector2((width - takeAll.rect.width) * (1f - takeAll.pivot.x), 0f);
+            }
+
+            /// <summary>
+            /// How wide the label wants to be for its current text, from the text's own
+            /// preferred width (a TextMeshPro property, read by reflection since that assembly
+            /// is not referenced). Zero when there is no label to ask.
+            /// </summary>
+            private static float LabelWidth()
+            {
+                if (labelText == null)
+                {
+                    Transform text = button.transform.Find("Text");
+                    if (text == null)
+                    {
+                        return 0f;
+                    }
+                    foreach (Component component in text.GetComponents<Component>())
+                    {
+                        PropertyInfo property = component.GetType().GetProperty("preferredWidth", typeof(float));
+                        if (property != null && property.CanRead)
+                        {
+                            labelText = component;
+                            labelWidth = property;
+                            break;
+                        }
+                    }
+                }
+                return labelText != null ? (float)labelWidth.GetValue(labelText, null) : 0f;
             }
 
             private static bool Create(InventoryGui gui)
@@ -452,19 +528,7 @@ namespace OdinsMissingPatch
                 }
                 button.onClick = new Button.ButtonClickedEvent();
                 button.onClick.AddListener(Toggle);
-
-                RectTransform anchor = (RectTransform)takeAll.transform;
-                if (gui.m_stackAllButton != null)
-                {
-                    RectTransform stackAll = (RectTransform)gui.m_stackAllButton.transform;
-                    if (stackAll.anchoredPosition.x < anchor.anchoredPosition.x)
-                    {
-                        anchor = stackAll;
-                    }
-                }
-                RectTransform rect = (RectTransform)go.transform;
-                rect.anchoredPosition = anchor.anchoredPosition - new Vector2(anchor.rect.width + 8f, 0f);
-                go.transform.SetSiblingIndex(anchor.GetSiblingIndex());
+                go.transform.SetSiblingIndex(takeAll.transform.GetSiblingIndex());
 
                 UITooltip tooltip = go.GetComponent<UITooltip>();
                 if (tooltip != null)
@@ -472,6 +536,8 @@ namespace OdinsMissingPatch
                     tooltip.m_text = "Whether crafting, quick stacking and refuelling may reach into this chest";
                 }
                 label = null;
+                labelText = null;
+                labelWidth = null;
                 return true;
             }
 
