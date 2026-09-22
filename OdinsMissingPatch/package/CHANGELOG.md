@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Equip while running: pressing a hotbar key while sprinting now equips or unequips the weapon,
+  shield or armour without you having to slow down. It still takes the usual moment, an
+  attack, jump or dodge still interrupts it, and a crossbow still only reloads once you stop.
+
 ## 0.2.0
 
 - Endless fuel: campfires, hearths, torches, braziers and the hot tub never go out.

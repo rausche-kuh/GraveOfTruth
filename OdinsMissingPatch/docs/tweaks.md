@@ -28,6 +28,7 @@ player's own save).
 | ChestButtons | world state (the open chest) | [inventory-ui](inventory-ui.md) |
 | InventoryButtons | client (chest writes go to the open chest) | [inventory-ui](inventory-ui.md), [item-order](item-order.md) |
 | PowerPicker | character | [radial-menu](radial-menu.md) |
+| EquipWhileRunning | client | [equipping](equipping.md) |
 
 ## Shipped (0.1.0)
 
@@ -93,5 +94,13 @@ player's own save).
 - **Power picker** — a ninth element in the radial menu's top level, a Forsaken powers group whose
   sub menu holds one element per power whose boss has fallen, with the power's own `StatusEffect`
   icon; picking one calls `Player.SetGuardianPower`, the same call the sacrificial stone makes.
+
+## Unreleased
+
+- **Equip while running** — the equip queue survives a sprint. `Player.CheckRun` wipes it on
+  every sprinting tick in vanilla, so a hotbar press for anything with an equip duration only
+  lands once the player slows down; the wipe is dropped for equips and unequips under a flag
+  set while `CheckRun` runs, and still drops a queued crossbow reload. Attack, jump and dodge
+  clear the queue as before.
 
 Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel.

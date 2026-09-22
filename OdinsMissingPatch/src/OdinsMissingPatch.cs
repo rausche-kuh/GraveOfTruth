@@ -37,6 +37,7 @@ namespace OdinsMissingPatch
             ChestButtons.Instance,
             InventoryButtons.Instance,
             PowerPicker.Instance,
+            EquipWhileRunning.Instance,
         };
 
         void Awake()

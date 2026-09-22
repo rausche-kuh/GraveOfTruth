@@ -3,7 +3,7 @@
 The patch Odin forgot: my personal take on the quality of life changes Valheim should have shipped
 years ago, in one mod.
 
-Eighteen tweaks, each with its own config section and its own switch. Nothing needs a server
+Nineteen tweaks, each with its own config section and its own switch. Nothing needs a server
 install.
 
 ## Changes beyond QoL
@@ -79,6 +79,9 @@ because I want them, not because I can argue they are neutral:
   under its initial.
 - **Power picker** — adds a Forsaken powers ring to the radial menu, so you can pick a power
   without running to the sacrifice stone.
+- **Equip while running** — a hotbar press while sprinting equips the weapon, shield or armour
+  without you slowing down; vanilla drops the press until you stop. The equip takes its usual
+  time, attacks, jumps and dodges still interrupt it, and a crossbow still waits to reload.
 
 ## Configuration
 
