@@ -3,7 +3,7 @@
 | Mod                                     | What it does                                                                                                                                 |
 | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | [GraveOfTruth](GraveOfTruth/)           | Dying calls down the obliterator's lightning on your grave and plays a loser jingle out of it, echo, thunderstorm and all.                   |
-| [OdinsMissingPatch](OdinsMissingPatch/) | Small quality of life changes, each one configurable: wider crafting station, comfort and mist clearing ranges, fires that never go out. |
+| [OdinsMissingPatch](OdinsMissingPatch/) | Small quality of life changes, each one configurable: wider crafting station, comfort and mist clearing ranges, fires that never go out, stamina that only drains in combat. |
 
 ## Quick start
 

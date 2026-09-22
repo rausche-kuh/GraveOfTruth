@@ -1,0 +1,9 @@
+{
+    "name": "OdinsMissingPatch",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
+    "description": "A collection of small quality of life changes, each one configurable and off by a single switch",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}
