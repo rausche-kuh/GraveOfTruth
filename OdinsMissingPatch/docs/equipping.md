@@ -1,6 +1,8 @@
 # Equipping
 
-EquipWhileRunning.
+EquipWhileRunning, AutoShield.
+
+## EquipWhileRunning
 
 - A hotbar press is `Player.UseHotbarItem` → `Humanoid.UseItem` → `Player.ToggleEquipped`. For
   an item whose `m_shared.m_equipDuration` is `0` (a torch, most tools) that equips on the spot
@@ -35,3 +37,36 @@ EquipWhileRunning.
   a swing, a block, a bow draw and the guardian power (`Humanoid.StartAttack`,
   `Humanoid.IsBlocking`, `Player.UpdateAttackBowDraw`, `Player.StartGuardianPower`) but not
   the run itself: `Character.CheckRun` never asks for it.
+
+## AutoShield
+
+- The off hand is decided inside `Humanoid.EquipItem`, not around it. Its `OneHandedWeapon` branch
+  unequips `m_leftItem` *unless* it is a `Shield` or a `Torch`, so by the time the weapon has
+  landed the hand is either still holding something the player chose to keep, or empty. That is
+  the whole condition the tweak needs: `GetLeftItem() == null` after the weapon, and nothing has
+  to be guessed beforehand - a bow, which lives in the left hand, is gone by then, and the shield
+  fills the hand it left.
+- `EquipItem` is reached by far more than a press: `Player.EquipInventoryItems` restores what was
+  worn at logout, `Humanoid.ShowHandItems` puts back what `HideHandItems` took away, and
+  `InventoryGui`'s drag re-equips what was already equipped after a slot swap. None of those are
+  a player drawing a weapon, so the tweak does not trigger off `EquipItem` alone: a `ToggleEquipped`
+  prefix records the one handed weapon the press is *for*, and the `EquipItem` postfix only acts on
+  that exact item. `ToggleEquipped` is the single entry both a hotbar key
+  (`Player.UseHotbarItem` → `Humanoid.UseItem`) and a use in the inventory screen
+  (`InventoryGui` → `Humanoid.UseItem`) go through, which is why the record is taken there.
+- The same press on an item that is already equipped is an unequip, and on one whose equip is still
+  in the action queue it is a cancel (`QueueEquipAction` calls `RemoveEquipAction` when the item is
+  already queued). Both are read off before the original runs - `IsItemEquiped`, `IsEquipActionQueued` -
+  and neither records anything; a cancel also drops the mark its own first press left, so a weapon
+  equip that is called off never lands a shield on its own. The mark is otherwise left alone rather
+  than cleared on every press, so a helmet pressed while the sword is still queued does not cost the
+  sword its shield.
+- The shield is equipped by calling `Player.ToggleEquipped` again rather than `EquipItem` directly,
+  so it queues with its own `m_equipDuration` behind the weapon (`UpdateActionQueue` has already
+  set the 0.3s `m_actionQueuePause`) and every refusal - mid attack, mid dodge, swimming, broken -
+  is the game's own. The re-entry is safe because a shield is not a `OneHandedWeapon`: the
+  `ToggleEquipped` prefix records nothing for it and the chain stops there.
+- Which shield: favourites (`QuickStack.IsFavorite`, the mod's own flag in `m_customData`) before
+  the hotbar row (`m_gridPos.y == 0`) before the rest, and the first slot within whichever tier
+  wins, reading along each row and then down. Inventory order rather than the best block value, so
+  the choice stays the player's - moving a shield to the hotbar or marking it is how you pick.

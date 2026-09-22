@@ -29,6 +29,7 @@ player's own save).
 | InventoryButtons | client (chest writes go to the open chest) | [inventory-ui](inventory-ui.md), [item-order](item-order.md) |
 | PowerPicker | character | [radial-menu](radial-menu.md) |
 | EquipWhileRunning | client | [equipping](equipping.md) |
+| AutoShield | client | [equipping](equipping.md) |
 
 ## Shipped (0.1.0)
 
@@ -84,13 +85,14 @@ player's own save).
   per click of the repair button. Repairing is free in vanilla, so there is nothing to pay.
 - **Chest buttons** — the chest panel's Take all and Stack all give way to five icon buttons placed
   beside the panels: fill your stacks from the chest (in the column beside the inventory panel,
-  shared with Inventory buttons); take all, place all, fill the chest's stacks from the backpack and
+  shared with Inventory buttons), which tops the backpack's stacks up to their caps and opens no
+  new one; take all, place all, fill the chest's stacks from the backpack and
   sort the chest, in a column beside the chest panel. The two that put things in skip worn gear,
   favourites and (a switch) the hotbar.
 - **Inventory buttons** — stack nearby (quick stacking by click, shown while that tweak is on and no
   chest is open) and sort, in the same column. The sort merges stacks and lays out by kind, name and
-  quality, leaving favourites and, by default, the hotbar in place; materials come first by whether a
-  portal carries them, then by family and depth, then by name.
+  quality, leaving equipped items, favourites and, by default, the hotbar in place; materials come
+  first by whether a portal carries them, then by family and depth, then by name.
 - **Power picker** — a ninth element in the radial menu's top level, a Forsaken powers group whose
   sub menu holds one element per power whose boss has fallen, with the power's own `StatusEffect`
   icon; picking one calls `Player.SetGuardianPower`, the same call the sacrificial stone makes.
@@ -102,5 +104,12 @@ player's own save).
   lands once the player slows down; the wipe is dropped for equips and unequips under a flag
   set while `CheckRun` runs, and still drops a queued crossbow reload. Attack, jump and dodge
   clear the queue as before.
+- **Auto shield** — equipping a one handed weapon raises a shield with it, when the off hand comes
+  out of the equip empty. A `Player.ToggleEquipped` prefix records the weapon a press is for, and a
+  `Humanoid.EquipItem` postfix acts on that item alone, so restoring gear at login, taking hands
+  back out and a drag in the inventory never arm anything; a shield or a torch already in the hand
+  survives the weapon and is left alone. The shield is picked favourites first, then the hotbar row,
+  then the rest of the backpack, first slot within each, and is equipped through `ToggleEquipped`
+  so it takes its own duration and can be interrupted like any equip.
 
 Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel.

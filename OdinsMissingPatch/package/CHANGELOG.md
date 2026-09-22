@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Auto shield: drawing a one handed weapon now raises a shield with it, if your off hand is empty
+  and you carry one. A shield or torch already in your hand stays, and the shield is chosen from
+  your favourites first, then your hotbar, then the rest of your backpack.
+- Fill your stacks now only tops the stacks you already carry up to their caps; what the chest
+  holds beyond that stays in the chest instead of landing in your free slots as a new stack.
+- Sorting your inventory now leaves what you have equipped where it is, the way it already left
+  your favourites, and lays everything else out around both.
+- A favourite item is now marked with a yellow border around its slot instead of a filled
+  background, so you can still tell at a glance whether a favourite is equipped.
+
 ## 0.2.1
 
 - Equip while running: pressing a hotbar key while sprinting now equips or unequips the weapon,

@@ -11,8 +11,8 @@ namespace OdinsMissingPatch
     /// to the nearest chest that already holds that item, topping up its stacks before taking a
     /// free slot. Each chest that took something pulses and shows how many it took; a message
     /// sums it up. Equipped items and the hotbar stay (the hotbar is a switch), and so does
-    /// anything marked as a favourite: a modifier-click on an item in the inventory marks it with
-    /// a golden frame, and quick stacking leaves it alone.
+    /// anything marked as a favourite: a modifier-click on an item in the inventory draws a golden
+    /// border around it, and quick stacking leaves it alone.
     ///
     /// A favourite is a flag on the stack itself and only means anything in your own backpack:
     /// it can only be set there, and a stack that leaves it — into a chest, into the grave your
@@ -269,14 +269,20 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
-        /// The golden frame: a copy of the slot's own "equipped" frame, tinted, drawn right
-        /// above it and switched on for favourites after every grid refresh. Slots are rebuilt
-        /// when an inventory changes size, so a frame whose slot is gone is simply made again.
+        /// The golden border: four thin gold bars along the edges of the slot's own "equipped"
+        /// frame, switched on for favourites after every grid refresh. A border rather than a
+        /// filled frame leaves the game's own equipped highlight visible underneath, so an
+        /// equipped favourite still reads as equipped. Slots are rebuilt when an inventory
+        /// changes size, so a border whose slot is gone is simply made again.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
         private static class ShowFavorites
         {
-            private static readonly Dictionary<InventoryElement, Image> frames = new Dictionary<InventoryElement, Image>();
+            /// <summary>How thick each bar is, in the canvas' units — a slot is about seventy.</summary>
+            private const float Thickness = 3f;
+
+            private static readonly Dictionary<InventoryElement, GameObject> borders =
+                new Dictionary<InventoryElement, GameObject>();
 
             private static void Postfix(InventoryGrid __instance)
             {
@@ -287,9 +293,9 @@ namespace OdinsMissingPatch
                 }
                 foreach (InventoryElement element in __instance.m_elements)
                 {
-                    if (frames.TryGetValue(element, out Image frame) && frame != null)
+                    if (borders.TryGetValue(element, out GameObject border) && border != null)
                     {
-                        frame.enabled = false;
+                        border.SetActive(false);
                     }
                 }
                 if (!Instance.On)
@@ -304,38 +310,64 @@ namespace OdinsMissingPatch
                         continue;
                     }
                     InventoryElement element = __instance.GetElement(item.m_gridPos.x, item.m_gridPos.y, width);
-                    Image frame = element != null ? FrameFor(element) : null;
-                    if (frame != null)
+                    GameObject border = element != null ? BorderFor(element) : null;
+                    if (border != null)
                     {
-                        frame.enabled = true;
+                        border.SetActive(true);
                     }
                 }
             }
 
-            private static Image FrameFor(InventoryElement element)
+            private static GameObject BorderFor(InventoryElement element)
             {
-                if (frames.TryGetValue(element, out Image frame) && frame != null)
+                if (borders.TryGetValue(element, out GameObject border) && border != null)
                 {
-                    return frame;
+                    return border;
                 }
                 Image template = element.m_equiped;
                 if (template == null)
                 {
                     return null;
                 }
-                GameObject go = Object.Instantiate(template.gameObject, template.transform.parent);
-                go.name = "OMP_Favorite";
-                go.transform.SetSiblingIndex(template.transform.GetSiblingIndex() + 1);
-                go.SetActive(true);
-                frame = go.GetComponent<Image>();
-                if (frame == null)
-                {
-                    Object.Destroy(go);
-                    return null;
-                }
-                frame.color = Gold;
-                frames[element] = frame;
-                return frame;
+                RectTransform source = template.rectTransform;
+                border = new GameObject("OMP_Favorite", typeof(RectTransform));
+                border.layer = source.gameObject.layer;
+                RectTransform rect = (RectTransform)border.transform;
+                rect.SetParent(source.parent, false);
+                rect.anchorMin = source.anchorMin;
+                rect.anchorMax = source.anchorMax;
+                rect.pivot = source.pivot;
+                rect.anchoredPosition = source.anchoredPosition;
+                rect.sizeDelta = source.sizeDelta;
+                rect.localScale = source.localScale;
+                rect.localRotation = source.localRotation;
+                rect.SetSiblingIndex(source.GetSiblingIndex() + 1);
+                Bar(rect, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, Thickness));
+                Bar(rect, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, Thickness));
+                Bar(rect, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(Thickness, 0f));
+                Bar(rect, new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(Thickness, 0f));
+                borders[element] = border;
+                return border;
+            }
+
+            /// <summary>
+            /// One edge: an image stretched along the side its two anchors share and sized across
+            /// it, pivoted onto that side so it sits inside the frame.
+            /// </summary>
+            private static void Bar(RectTransform parent, Vector2 anchorMin, Vector2 anchorMax, Vector2 size)
+            {
+                GameObject bar = new GameObject("Bar", typeof(RectTransform));
+                bar.layer = parent.gameObject.layer;
+                RectTransform rect = (RectTransform)bar.transform;
+                rect.SetParent(parent, false);
+                rect.anchorMin = anchorMin;
+                rect.anchorMax = anchorMax;
+                rect.pivot = (anchorMin + anchorMax) * 0.5f;
+                rect.sizeDelta = size;
+                rect.anchoredPosition = Vector2.zero;
+                Image image = bar.AddComponent<Image>();
+                image.color = Gold;
+                image.raycastTarget = false;
             }
         }
     }

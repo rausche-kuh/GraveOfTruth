@@ -1,10 +1,7 @@
 # Odin's Missing Patch
 
 The patch Odin forgot: my personal take on the quality of life changes Valheim should have shipped
-years ago, in one mod.
-
-Nineteen tweaks, each with its own config section and its own switch. Nothing needs a server
-install.
+years ago, in one mod. Nothing needs a server install.
 
 ## Changes beyond QoL
 
@@ -68,7 +65,8 @@ because I want them, not because I can argue they are neutral:
   station's own `CanRepair` accepts, instead of one per click of the repair button. Crafting skill
   still rises with the wear mended.
 - **Chest buttons** — replaces Take all and Stack all with five icon buttons placed beside the
-  panels rather than on them: **fill your stacks** from the chest, and, down the chest's side,
+  panels rather than on them: **fill your stacks** from the chest (topping up what you already
+  carry, never starting a new stack), and, down the chest's side,
   **take all**, **place all**, **fill the chest's stacks** and **sort the chest**. The two that put
   things in skip worn gear, favourites and the hotbar (a switch). Off, and the game's two return.
 - **Inventory buttons** — **stack nearby** (quick stack by click, shown when no chest is open) and
@@ -76,12 +74,18 @@ because I want them, not because I can argue they are neutral:
   quality, below the hotbar. Materials are ordered by what the game's own recipes say — an ore
   next to its bar and what the bar builds, families in the order you meet them, everything a
   portal refuses in one block at the end — so a modded material lands with its own kin instead of
-  under its initial.
+  under its initial. What you have equipped and your favourites stay in the slot you put them in,
+  and everything else is laid out around them.
 - **Power picker** — adds a Forsaken powers ring to the radial menu, so you can pick a power
   without running to the sacrifice stone.
 - **Equip while running** — a hotbar press while sprinting equips the weapon, shield or armour
   without you slowing down; vanilla drops the press until you stop. The equip takes its usual
   time, attacks, jumps and dodges still interrupt it, and a crossbow still waits to reload.
+- **Auto shield** — drawing a one handed weapon raises a shield with it, so a sword pulled after
+  your bow does not leave you with nothing to block with. Only an empty off hand is filled: a
+  shield or a torch you are already holding stays. It picks the shield you marked as a favourite
+  first, then one on your hotbar, then the rest of your backpack, and raises it the way you would
+  have, taking its usual moment.
 
 ## Configuration
 

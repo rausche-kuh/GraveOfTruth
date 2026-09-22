@@ -10,7 +10,8 @@ namespace OdinsMissingPatch
     /// The chest panel's Take all and Stack all give way to five icon buttons, each hovering to
     /// a name and a line on what it does. Beside the inventory panel, at the top of the
     /// InventoryButtons column between the armour and weight boxes: fill the stacks you carry
-    /// from the chest. Beside the chest panel, in a column from its top: take all, place all (everything you carry that is not equipped,
+    /// from the chest, up to their caps and no further - it never opens a stack you did not
+    /// already have. Beside the chest panel, in a column from its top: take all, place all (everything you carry that is not equipped,
     /// a favourite or in the hotbar), fill the chest's stacks from your backpack, and sort the
     /// chest.
     /// Switching the tweak off puts the game's own two buttons back.
@@ -65,7 +66,11 @@ namespace OdinsMissingPatch
             }
         }
 
-        /// <summary>The mirror of the game's Stack all: what the chest holds of the items you carry comes to you.</summary>
+        /// <summary>
+        /// Tops the stacks you carry up out of the chest, and no further: the game's own Stack all
+        /// would spill the rest into your free slots, which turns a top-up into a second stack you
+        /// never asked for. Take all is the button for that.
+        /// </summary>
         private static void FillInventory()
         {
             InventoryGui gui = Ready(out Player player, out Container chest);
@@ -74,8 +79,67 @@ namespace OdinsMissingPatch
                 return;
             }
             gui.SetupDragItem(null, null, 1);
-            int moved = player.GetInventory().StackAll(chest.GetInventory());
+            int moved = TopUp(player.GetInventory(), chest.GetInventory());
             Report(gui, player, moved, "Took " + moved + " onto your stacks", "Nothing to take onto your stacks");
+        }
+
+        /// <summary>
+        /// Moves what fits into the stacks <paramref name="target"/> already holds and nothing
+        /// more: no free slot is taken, so nothing the target does not already carry appears in
+        /// it and no stack grows past its cap. What may merge is the game's own rule, from
+        /// Inventory.FindFreeStackItem - same name, quality, world level and cheat flag, and room
+        /// left under the cap. Returns how many units went.
+        /// </summary>
+        private static int TopUp(Inventory target, Inventory source)
+        {
+            int moved = 0;
+            foreach (ItemDrop.ItemData item in new List<ItemDrop.ItemData>(source.GetAllItems()))
+            {
+                if (item.m_shared.m_maxStackSize <= 1)
+                {
+                    continue;
+                }
+                int before = item.m_stack;
+                foreach (ItemDrop.ItemData stack in target.GetAllItems())
+                {
+                    if (item.m_stack <= 0)
+                    {
+                        break;
+                    }
+                    if (!Merges(stack, item))
+                    {
+                        continue;
+                    }
+                    int fits = Mathf.Min(stack.m_shared.m_maxStackSize - stack.m_stack, item.m_stack);
+                    stack.m_stack += fits;
+                    item.m_stack -= fits;
+                }
+                if (item.m_stack == before)
+                {
+                    continue;
+                }
+                moved += before - item.m_stack;
+                if (item.m_stack <= 0)
+                {
+                    source.RemoveItem(item);
+                }
+            }
+            if (moved > 0)
+            {
+                target.Changed();
+                source.Changed();
+            }
+            return moved;
+        }
+
+        /// <summary>Whether a unit of <paramref name="item"/> may join the stack <paramref name="stack"/>.</summary>
+        private static bool Merges(ItemDrop.ItemData stack, ItemDrop.ItemData item)
+        {
+            return stack.m_stack < stack.m_shared.m_maxStackSize
+                && stack.m_shared.m_name == item.m_shared.m_name
+                && stack.m_quality == item.m_quality
+                && stack.m_worldLevel == item.m_worldLevel
+                && stack.m_cheated == item.m_cheated;
         }
 
         private static void FillChest()
@@ -255,7 +319,7 @@ namespace OdinsMissingPatch
                     return false;
                 }
                 Button fillInventory = PanelButtons.Create(gui, inventory, "FillInventory", "fill_inventory", "Fill your stacks",
-                    "What the chest holds of the items you carry comes to you.", FillInventory);
+                    "Tops up the stacks you carry from the chest, as far as they hold. Nothing new is taken.", FillInventory);
                 Button takeAll = PanelButtons.Create(gui, chest, "TakeAll", "take_all", "Take all",
                     "Everything in the chest goes into your inventory.", TakeAll);
                 Button placeAll = PanelButtons.Create(gui, chest, "PlaceAll", "place_all", "Place all",

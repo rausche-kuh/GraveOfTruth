@@ -10,7 +10,7 @@ namespace OdinsMissingPatch
     /// the weight box: stack nearby, which is quick stacking by click (shown while Quick Stack is on, since
     /// it is that tweak's range and rules, and only while no chest is open, when ChestButtons'
     /// fill your stacks takes its place), and sort, which merges and sorts the backpack below
-    /// the hotbar. Favourites keep their slot; everything else flows around them.
+    /// the hotbar. Equipped items and favourites keep their slot; everything else flows around them.
     /// </summary>
     internal sealed class InventoryButtons : Tweak
     {
@@ -56,7 +56,8 @@ namespace OdinsMissingPatch
                 return;
             }
             gui.SetupDragItem(null, null, 1);
-            InventorySorter.Sort(player.GetInventory(), Instance.sortHotbar.Value ? 0 : 1, QuickStack.IsFavorite);
+            InventorySorter.Sort(player.GetInventory(), Instance.sortHotbar.Value ? 0 : 1,
+                item => item.m_equipped || player.IsItemEquiped(item) || QuickStack.IsFavorite(item));
         }
 
         // ---- The buttons -----------------------------------------------------------------------
@@ -108,7 +109,8 @@ namespace OdinsMissingPatch
                 stackNearby = PanelButtons.Create(gui, panel, "StackNearby", "stack_nearby", "Stack nearby",
                     "Stacks your inventory into the chests around you that already hold each item.", StackNearby);
                 sort = PanelButtons.Create(gui, panel, "SortInventory", "sort", "Sort",
-                    "Merges your stacks and sorts the inventory by kind and name. Favourites and the hotbar stay.", SortInventory);
+                    "Merges your stacks and sorts the inventory by kind and name. What you have equipped, "
+                    + "your favourites and the hotbar stay.", SortInventory);
                 if (stackNearby == null || sort == null)
                 {
                     if (stackNearby != null)

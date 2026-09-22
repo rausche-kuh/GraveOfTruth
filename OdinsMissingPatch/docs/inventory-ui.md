@@ -32,14 +32,20 @@
   variant and custom data (so a tagged stack never swallows a plain one), refuses without
   touching anything when the free slots would not hold the items, and only ever writes
   `m_gridPos` and `m_stack` before one `Changed()`. Items above the chosen row and items the
-  caller keeps hold their slot; the rest flows around them.
+  caller keeps hold their slot; the rest flows around them. The backpack's Sort keeps what the
+  player has equipped (`m_equipped` or `Player.IsItemEquiped`, as Quick Stack reads it) and every
+  favourite, so a kept stack is never moved and never merged into either. A chest's Sort keeps
+  nothing: neither flag means anything outside the backpack.
 
 ## Game facts
 
 - `InventoryGrid.OnLeftDown` is where a click on a slot is turned into the select callback that
   picks the item up, so a prefix returning false is a clean veto; Shift and Ctrl are the game's
   split and move modifiers there, Alt is free. `InventoryElement.m_equiped` is the frame `Image`
-  drawn over an equipped item, toggled by `enabled`, and a tinted copy of it is a frame of our own.
+  drawn over an equipped item, toggled by `enabled`; its `RectTransform` is what a mark of our own
+  borrows to sit exactly on the slot. A mark laid over that frame has to be a border rather than a
+  fill, or an equipped item and a favourite look the same — four stretched `Image`s with no sprite,
+  anchored to one side each and pivoted onto it, need no asset.
   `UpdateGui` rebuilds every element when the inventory changes size.
 - `Player.TakeInput()` is false while any GUI is open, the inventory included; a hotkey that should
   work with the inventory open has to re-ask the chat, console, text input and menu itself.
@@ -53,7 +59,11 @@
   has, which is what tints a button's icon to match. `OnTakeAll` / `OnStackAll` are the two
   buttons' handlers (private, publicized): `Inventory.MoveAll(from)` is take all, and
   `Inventory.StackAll(from)` moves what `this` already holds by name, skipping only what the
-  local player has equipped - so the game's Stack all empties the hotbar too. Both cancel a
+  local player has equipped - so the game's Stack all empties the hotbar too, and, since it adds
+  through `AddItem`, it spills whatever does not fit the existing stacks into free slots. Fill
+  your stacks does not use it: `ChestButtons.TopUp` merges unit for unit into the stacks the
+  target already has and stops at their caps, so the button never opens a stack that was not
+  there - take all is the button for that. Both cancel a
   drag first with `SetupDragItem(null, null, 1)`. `InventoryGui.UpdateInventory(Player)`
   refreshes the backpack grid every frame the screen is up; `m_player` is the inventory panel's
   `RectTransform`, `m_container` the chest panel's. An item's slot is nothing but
