@@ -14,7 +14,13 @@ writes world state (the fuel on the fire's ZDO), see below. Mist clear range —
 doubled by default. Client side. Combat stamina — sprinting, jumping, swimming, sneaking, building,
 chopping, mining and weapon swings cost nothing while nothing hostile is within 25m and nothing
 that has noticed the player is coming for them; the bar also refills while swimming and mid
-swing. Client side, one switch per cost.
+swing. Client side, one switch per cost. Instant comfort — sitting down by a fire grants Rested at
+once, for the comfort of the spot, instead of after the ten seconds of Resting. Client side. Fast
+portals — a portal trip ends as soon as the screen is black and the other side is loaded, not
+after the fixed eight seconds; the fade is shorter too. Client side. Keep gear on death — items
+of a configurable list of types (weapons, armour, ammo, tools, utility, trinkets, consumables by
+default) stay in the inventory and stay equipped when the player dies, whatever the world's death
+penalty; only the rest goes to the grave. Client side, owner-only code path.
 
 | Path | What |
 | --- | --- |
@@ -63,6 +69,14 @@ swing. Client side, one switch per cost.
 - Anything decided per character (`Attack` runs for every character in the world) is waived only
   for `Player.m_localPlayer`; a check that is only ever clear when nothing hostile is near is
   exactly what a wandering boar would otherwise collect on.
+- A list setting is one comma separated `ConfigEntry<string>` (`KeepGearOnDeath.KeepTypes`),
+  parsed into a set once at bind and again from the entry's own `SettingChanged`, never per use.
+  Unknown names are logged and skipped rather than failing the whole list; the description lists
+  every valid name so a player never has to look them up.
+- A game method that is a filter over a private list (`Inventory.MoveInventoryToGrave`,
+  `RemoveUnequipped`) is replaced by a prefix that returns false and runs the same loop with the
+  tweak's predicate folded in, rather than pulling items out of the list around the original: a
+  throw inside the original would leave the pulled items nowhere, and this is the death path.
 
 ## Game facts worth keeping
 
@@ -126,12 +140,52 @@ swing. Client side, one switch per cost.
   timer are fed from, and what `CombatStamina` reads its enraged signal from: alerted, and coming
   for you, whoever owns the monster. `HuntPlayer()` monsters (bosses, event creatures) are alerted
   permanently and target the closest player within 200m, so they report too.
+- Rested is handed out by Resting, not by the player: `Player.UpdateEnvStatusEffects` adds
+  `Resting` (`SE_Cozy`, `resetTime: false`) every frame the conditions hold - a fire within the
+  last 0.25s (`m_nearFireTimer`), and sitting or in shelter, and not wet, cold, freezing, burning
+  or sensed - and removes it the frame they stop, so each rest is a fresh clone with `m_time` at
+  0. `SE_Cozy.UpdateStatusEffect` adds its `m_statusEffect` (`Rested`, `resetTime: true`) on
+  every tick past `m_delay` (10s). `SE_Rested.ResetTime` → `UpdateTTL` sets the duration to
+  `m_baseTTL + (comfort - 1) * m_TTLPerComfortLevel` only if that is longer than what is left,
+  so refreshing it every frame never shortens it. The comfort it reads is
+  `Player.m_comfortLevel`, re-measured by `Player.UpdateBaseValue` on a 2s timer - stale for up to
+  2s after walking in, which is why `InstantComfort` measures it again before the first grant.
+  `IsSitting()` is the animator tag, so a chair, a bench and the sit emote all count.
+- A portal trip is `Player.UpdateTeleport(dt)` (owner only, from `FixedUpdate`) counting
+  `m_teleportTimer` against three literals: past `2f` the player is moved to the target, past
+  `8f` (distant teleports only) *and* once `ZNetScene.IsAreaReady` the floor is looked for and
+  the trip ends, past `15f` with no floor found the player is dropped at `GetSolidHeight`. The
+  portal trigger itself has no delay. `FastPortals` does not touch the literals: once the loading
+  screen is fully black it sets the timer to `8f`, so both gates are passed in one frame and the
+  fallback keeps its seven seconds. The black screen is `Hud.m_loadingScreen` (a `CanvasGroup`),
+  moved at `dt / Hud.GetFadeDuration(player)`, a literal `1f` unless dead or sleeping - and the
+  fade out on arrival calls it with the teleport already over, so nothing on the player says why
+  the screen is up; the tweak remembers that itself. `Player.TeleportTo` refuses a new trip while
+  `m_teleportCooldown < 2f`, counted from the end of the last one - left alone, it is what keeps
+  you from bouncing straight back through the portal you arrived at.
+- Death and the inventory is `Player.CreateTombStone()`, called from `Player.OnDeath` (owner
+  only) and skipped entirely when the inventory is empty or the world has
+  `GlobalKeys.DeathKeepInventory`. It reads three more world modifier keys: unless
+  `DeathKeepEquip` (or `DeathDeleteUnequipped`) it calls `Humanoid.UnequipAllItems()`, which
+  walks the nine equipment slot fields through `UnequipItem(item, false)`; under
+  `DeathDeleteItems` / `DeathDeleteUnequipped` it calls `Inventory.RemoveUnequipped()`; then it
+  spawns `m_tombstone` and calls `Inventory.MoveInventoryToGrave(original)` on its container. Both
+  `Inventory` methods filter on `!m_questItem && !m_equipped` and have no other caller, so
+  "equipped" is the game's whole notion of "stays with you", which is why `KeepGearOnDeath` keeps
+  its items equipped (skipping their `UnequipItem` while the local player's `CreateTombStone`
+  runs) and folds its type list into both filters. Respawn goes through `Player.Load`, which
+  unequips everything and then `EquipInventoryItems()` re-equips whatever has `m_equipped` set -
+  so gear that goes through death equipped comes back worn. An empty tombstone destroys itself
+  (`TombStone.UpdateDespawn`, not in use and zero items). `ItemType` is
+  `ItemDrop.ItemData.ItemType`; `Ammo` is arrows and bolts, `AmmoNonEquipable` the rest,
+  `Consumable` covers food and meads alike, `Misc` is coins and the like, `Tool` the hammer, hoe
+  and cultivator.
 
 ## References
 
 `~/Documents/Code/test/othervalheimmods/ValheimMods` is Crystal Ferrai's mod collection (Apache-2.0, published on
 Thunderstore as `Crystal/*` and kept as a reference here — a checkout, not a dependency, and none
-of its code is copied in). Three of its mods cover the same ground as the tweaks here and have been
+of its code is copied in). Five of its mods touch the same ground as the tweaks here and have been
 shipped and played for far longer, so they are the thing to check before changing any of them:
 
 - `BuildSpace/BuildSpacePlugin.cs` — the station build radius. Same shape as `StationRange`:
@@ -154,7 +208,22 @@ shipped and played for far longer, so they are the thing to check before changin
   (it runs after `Awake`, and again after a re-enable) and sets the range from a remembered
   vanilla value, see the conventions above; otherwise the same shape.
 
-All three take a hard dependency on shudnal's `ConditionalConfigSync` so a server can enforce the values
+- `ProperPortals/ProperPortalsPlugin.cs` — the portal wait, and what `FastPortals` was checked
+  against. It replaces the `2f` / `8f` / `15f` literals through a transpiler with
+  `FadeTime` / `FadeTime + MinPortalTime` / `+ 0.5f`, which bakes the config into the IL, so it
+  unpatches and re-patches on every setting change; it also prefixes `Hud.GetFadeDuration` for
+  the fade in only. `FastPortals` jumps the timer from a prefix once the screen reads as black,
+  needs no re-patching and covers the fade out too. Its `Inventory.IsTeleportable` override and
+  the `m_activationRange` / `m_proximityRoot` tweak are the place to start if either becomes a
+  tweak.
+
+- `DeathPenalty/DeathPenaltyPlugin.cs` — the *other* half of the death penalty: skill loss
+  percent, level progress reset, the no-skill-loss and corpse-run effect durations. It never
+  touches the inventory, so `KeepGearOnDeath` was built from the game code alone; it is the place
+  to start if skill loss ever becomes a tweak (`Skills.m_DeathLowerFactor`,
+  `Player.m_hardDeathCooldown`, `TombStone.m_lootStatusEffect.m_ttl`).
+
+All of them take a hard dependency on shudnal's `ConditionalConfigSync` so a server can enforce the values
 on every client, and all default to vanilla and do nothing until configured. None of that applies here
 — this mod is meant to be dropped in and to change something — but server enforcement is the answer
 if a tweak ever stops being purely local.

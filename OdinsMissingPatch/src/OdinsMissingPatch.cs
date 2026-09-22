@@ -24,6 +24,9 @@ namespace OdinsMissingPatch
             EndlessFuel.Instance,
             MistClearRange.Instance,
             CombatStamina.Instance,
+            InstantComfort.Instance,
+            FastPortals.Instance,
+            KeepGearOnDeath.Instance,
         };
 
         void Awake()
