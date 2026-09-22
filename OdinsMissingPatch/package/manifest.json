@@ -1,6 +1,6 @@
 {
     "name": "OdinsMissingPatch",
-    "version_number": "0.2.2",
+    "version_number": "0.2.3",
     "website_url": "https://github.com/rausche-kuh/valheimmods",
     "description": "A collection of small quality of life changes, each one configurable and off by a single switch",
     "dependencies": [

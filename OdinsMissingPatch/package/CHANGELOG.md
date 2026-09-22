@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.3
 
 - Pocket upgrades: Haldor now offers Wider Pockets, the first extra inventory row, once the Elder
   has fallen instead of Moder — the row arrives while your backpack is still what is slowing you

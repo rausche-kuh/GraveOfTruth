@@ -14,7 +14,7 @@ namespace OdinsMissingPatch
     {
         public const string GUID = "rauschekuh.odinsmissingpatch";
         public const string NAME = "Odin's Missing Patch";
-        public const string VERSION = "0.2.2";
+        public const string VERSION = "0.2.3";
 
         /// <summary>Every tweak the mod ships. Listing one here is all it takes to enable it.</summary>
         private static readonly Tweak[] Tweaks =
