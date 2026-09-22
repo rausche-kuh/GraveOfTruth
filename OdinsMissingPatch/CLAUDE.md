@@ -20,13 +20,32 @@ portals — a portal trip ends as soon as the screen is black and the other side
 after the fixed eight seconds; the fade is shorter too. Client side. Keep gear on death — items
 of a configurable list of types (weapons, armour, ammo, tools, utility, trinkets, consumables by
 default) stay in the inventory and stay equipped when the player dies, whatever the world's death
-penalty; only the rest goes to the grave. Client side, owner-only code path.
+penalty; only the rest goes to the grave. Client side, owner-only code path. Area repair — one
+`Player.Repair` swing carries on to every damaged `Piece` within a configurable radius (10m by
+default) of the one the player aims at, closest first, at the game's own cost per piece. It writes
+world state through the game's own `WearNTear.Repair` RPC, so it needs no server install.
+Nearby crafting — the game's requirement checks and spends see the player-placed chests within a
+configurable range (20m) as part of the backpack, backpack paying first; an ingredient amount
+the chests have to pay for shows yellow, and its tooltip lists carried vs. in chests. Quick stack — a hotkey
+(. by default; G is bound by the game) moves every carried stack into the nearest chest in range that already holds that item, with a
+glow and a floating count per chest; an Alt-click marks a stack as a favourite (golden frame),
+which quick stacking skips, as it does equipped items and the hotbar. Nearby fuel — the four
+manual add-fuel interactions (fire, smelter, oven, shield generator) see the chests the same way,
+so a unit comes out of a chest when the backpack has none; nothing refuels itself. All three
+write chest inventories, which is world state, see below; a "Nearby use" button in the chest
+panel keeps a chest out of all three. Auto repair — pressing Use on a crafting station
+repairs every worn item in the inventory that station could repair, asking the crafting
+panel's own `CanRepair` per item, instead of one item per click of the repair button.
+Client side, and repairing is free in vanilla, so there is nothing to pay.
 
 | Path | What |
 | --- | --- |
 | `src/OdinsMissingPatch.cs` | BepInEx entry point: binds every tweak's config, then patches all. |
 | `src/Tweak.cs` | The base class: the section, the `Enabled` switch, `BindMultiplier`, `OnSettingChanged`. |
 | `src/Tweaks/<Name>.cs` | One quality of life change, with its `[HarmonyPatch]` classes nested inside it. |
+| `src/NearbyChests.cs` | Shared by the three chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag with its panel button and hover line. |
+| `src/ChestGlow.cs` | The golden pulse plus floating text on a chest (`ChestGlow.Flash`), for quick stack and anything that later needs to point at a chest. |
+| `src/Hotkeys.cs` | `Pressed` / `Held` for a `KeyboardShortcut`, read through `ZInput`. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
 ## Conventions
@@ -73,10 +92,30 @@ penalty; only the rest goes to the grave. Client side, owner-only code path.
   parsed into a set once at bind and again from the entry's own `SettingChanged`, never per use.
   Unknown names are logged and skipped rather than failing the whole list; the description lists
   every valid name so a player never has to look them up.
+- A tweak that repeats a game action on many objects (`AreaRepair`) pays the game's own price for
+  each one and asks the game's own questions about each one, rather than making the first action
+  cheaper or wider. The piece the game already handled is simply asked again and refuses by itself,
+  which keeps the patch a postfix with no special case for it and no way to pay twice.
 - A game method that is a filter over a private list (`Inventory.MoveInventoryToGrave`,
   `RemoveUnequipped`) is replaced by a prefix that returns false and runs the same loop with the
   tweak's predicate folded in, rather than pulling items out of the list around the original: a
   throw inside the original would leave the pulled items nowhere, and this is the death path.
+- A tweak that lets a game action reach into chests (`NearbyCrafting`, `NearbyFuel`) does not
+  patch the action: it opens `NearbyChests.EnterReach(range)` in a prefix on the action and closes
+  it in a **finalizer** (`__state` says whether it opened), and the three `Inventory` methods the
+  action goes through (`CountItems`, `HaveItem(string)`, `RemoveItem(string, ...)`) are widened
+  in one place while a reach is open, for the local player's backpack only. The backpack pays
+  first: the remove prefix lowers `amount` to what is carried and takes the rest from chests. A
+  finalizer rather than a postfix because Harmony skips postfixes when the original throws, and
+  a reach left open would make every later backpack read see the chests. Nothing outside an
+  opened reach touches a chest, so "which actions" is the whole design decision of such a tweak,
+  and each is named in the tweak. Nested reaches keep the innermost range.
+- Shared code that is not a tweak (`NearbyChests`) may hold patches of its own when the thing
+  they serve belongs to no single tweak (the registry, the opt-out button); they gate on
+  `NearbyChests.AnyTweakOn` rather than on one tweak.
+- Every chest write goes through `NearbyChests.Claim`: re-checks the in-reach rule (someone may
+  have opened the chest since it was found), reloads the inventory from the ZDO, then claims
+  ownership. `Find` hands out one reused list, so copy it before a loop that writes.
 
 ## Game facts worth keeping
 
@@ -180,6 +219,106 @@ penalty; only the rest goes to the grave. Client side, owner-only code path.
   `ItemDrop.ItemData.ItemType`; `Ammo` is arrows and bolts, `AmmoNonEquipable` the rest,
   `Consumable` covers food and meads alike, `Misc` is coins and the like, `Tool` the hammer, hoe
   and cultivator.
+- Repairing is `Player.Repair(toolItem, repairPiece)` (private, called from `Player.Update` when
+  the selected build piece is `m_repairPiece` and attack is pressed): it repairs
+  `GetHoveringPiece()` alone, after `CheckCanRemovePiece` (the piece's `m_craftingStation` within
+  `CraftingStation.HaveBuildStationInRange` of the *player*, waived by `m_noPlacementCost` /
+  `GlobalKeys.NoWorkbench`) and `PrivateArea.CheckAccess`, then spends `GetBuildStamina()`,
+  `m_attack.m_attackEitr` and `m_useDurabilityDrain * Game.m_durabilityRate`. `WearNTear.Repair()`
+  is the whole write and is idempotent on its own: it returns false at full health and false again
+  within `1f` of the last repair (`m_lastRepair`), otherwise it sends `RPC_Repair` — so the health
+  is set by whoever owns the piece and the mod is never needed on the other side.
+- Repairing an item is the crafting panel's repair button: `InventoryGui.OnRepairPressed` →
+  `RepairOneItem()`, which walks `Inventory.GetWornItems` (every item with `m_useDurability`
+  below its max) and repairs the **first** one the private `CanRepair(item)` accepts, then
+  returns. `CanRepair` is the whole question: the item may be repaired at all
+  (`m_canBeReparied`), the player's current station is named by the item's recipe as its
+  `m_craftingStation` or `m_repairStation` (or `item.m_worldLevel < Game.m_worldLevel`), and
+  the station's level is at least the recipe's `m_minStationLevel`. A repair costs nothing:
+  it raises Crafting by the wear it mended, sets `m_durability` to `GetMaxDurability()` and
+  plays `CraftingStation.m_repairItemDoneEffects`. `m_canRepair` is not asked there - it is
+  what hides the button in `UpdateRepair` - so a tweak that repairs by itself has to ask it.
+- `CraftingStation.Interact` is the whole of opening a station: for the local player, after
+  `InUseDistance` and `CheckUsable`, it calls `Player.SetCraftingStation(this)` and shows the
+  crafting panel. That is the only caller that sets a station, and `Player.UpdateStations`
+  clears it again the frame the panel closes or the player walks out of range, so "the local
+  player now holds this station" is exactly one station opening.
+- `Piece.s_allPieces` is the registry of every loaded piece (private static, publicized), and
+  `Piece.s_ghostLayer` is the layer the placement ghost sits on; the game's own radius searches
+  (`GetAllPiecesInRadius`, `GetAllComfortPiecesInRadius`) walk the one and skip the other, which is
+  what `AreaRepair` repeats. `Player.PlacementCostDisabled` is the public read of
+  `m_noPlacementCost`.
+- `ZInput.GetKey(KeyCode, logWarning)` is the game's own keyboard read and is null-safe before
+  `ZInput` exists; the legacy `UnityEngine.Input` is not what Valheim reads. `JoyAltKeys` (the
+  copy-piece modifier at the repair call site) is bound to a gamepad trigger only, so `LeftAlt`
+  reaches `Repair` untouched and is free for a modifier of our own.
+- A `Container`'s inventory is a `ZDO` byte blob (`s_items`), written by `Container.Save` only
+  when the local client **owns** the ZDO, and read back by `Load` in a 1s `CheckForChanges` tick
+  whenever the data revision moved and the chest is not in use. Opening a chest is an
+  `RPC_RequestOpen` to the owner, who refuses if it is in use, else hands the ZDO over
+  (`SetOwner`) and answers `RPC_OpenResponse`; "in use" is `m_inUse` on the owner and `s_inUse`
+  on the ZDO for everyone else, and a cart's hold also asks `Vagon.InUse()`. So a write from afar
+  is: reload, `ClaimOwnership`, edit the `Inventory` (its `m_onChanged` calls `Save`). There is no
+  lock; the in-use check is the only courtesy, which is why it is re-asked right before a write.
+  `CheckAccess(playerId)` (private) is the privacy setting and dereferences `m_piece`, null on a
+  container whose `Piece` sits on a parent (ship hold); the ward check is
+  `m_checkGuardStone && !PrivateArea.CheckAccess(pos, 0, flash: false)`, as in `Interact`.
+- "Placed by a player" is `Piece.IsPlacedByPlayer()` = `s_creator != 0`. A ruin's chest is the
+  same prefab with creator 0; loot chests have no `Piece`. Tombstones are a `Container` with a
+  `TombStone` beside it. No static list of containers exists; `Container.Awake` (only when the
+  object has a ZDO, so never a prefab or a placement ghost) is the place to register one.
+- `Inventory.AddItem(ItemData)` (what `StackAll` and `MoveItemToThis` use) is a merge-then-place:
+  it bumps the chest's own stacks one unit at a time and, for the remainder, moves the very
+  `ItemData` object into a free slot. **True** means everything went and the caller must remove
+  the object from the source (the unit count on it was never decremented when it all merged);
+  **false** means the merged part was subtracted from `item.m_stack`, the object is still the
+  source's, and an error line was logged — hence `HaveEmptySlot() || FindFreeStackSpace() > 0`
+  first. `FindFreeStackItem` matches name, quality, world level and cheated flag, not
+  `m_customData`, so a flagged stack absorbs unflagged units and keeps its flag.
+- `ItemData.m_customData` is a string dictionary saved with the item (inventory blob, character
+  file, dropped item) and copied by `Clone()`, so it is the place for a per-stack flag
+  (`QuickStack`'s favourite); splitting a stack copies the flag.
+- The requirement checks, and where each spends: `Player.HaveRequirementItems` (private; counts
+  per quality level 1..max and takes the best) behind `HaveRequirements(Recipe, ...)`, which with
+  `discover: true` reads `m_knownMaterial` and no inventory; `HaveRequirements(Piece, mode)` for
+  the build menu, the ghost and `Hud`; `ConsumeResources` for a craft, an upgrade and
+  `PlacePiece`; `InventoryGui.SetupRequirement` (static, takes the `Player`) for every ingredient
+  row of the crafting panel and the piece info, per frame; it shows only the needed amount
+  (`res_amount`, a `TMP_Text`, reachable as `Graphic` for its colour) in white, or blinking red
+  when the count falls short, and sets the row's `UITooltip.m_text` to the item name (the HUD
+  rows have one too, but no cursor to hover them). Harmony's `__state` may be a struct, which
+  is how `NearbyCrafting.RowScope` carries the carried count taken before the reach opens into
+  its postfix. A `m_requireOnlyOneIngredient` recipe
+  additionally looks the ingredient up in the backpack (`GetFirstRequiredItem`), so a widened
+  count there promises a craft the lookup then fails; `NearbyCrafting` leaves those recipes alone.
+  `InventoryGui.UpdateRecipeList` counts every ingredient of every recipe per quality level in one
+  frame, hence the per-frame chest count cache.
+- Manual refuelling is one unit per Use: `Fireplace.Interact`, `Smelter.OnAddFuel`,
+  `CookingStation.OnAddFuelSwitch`, `ShieldGenerator.OnAddFuel` (a list of fuels), each a
+  `HaveItem(name)` then `RemoveItem(name, 1)` on the user's inventory and an `RPC_AddFuel`; the
+  game refuses once `fuel > maxFuel - 1`. `Fireplace.UseItem` is the hotbar drop and takes the
+  item it is given. A kiln is a `Smelter` with no `m_fuelItem` (its wood is the ore).
+- `MaterialMan.instance.SetValue(go, ShaderProps._EmissionColor / _Color, color)` and
+  `ResetValue` tint every renderer under `go` through a property block, which is how
+  `WearNTear.Highlight` flashes a piece; `ShaderProps` is in `assembly_utils`. A ship's hold has
+  `m_rootObjectOverride`, so the ship is what glows.
+- `DamageText.AddInworldText(type, pos, distance, text, mySelf)` (private) is the floating combat
+  text without the RPC that `ShowText` sends to everyone; `TextType.Bonus` is the large orange one
+  that lingers 3s.
+- `InventoryGrid.OnLeftDown` is where a click on a slot is turned into the select callback that
+  picks the item up, so a prefix returning false is a clean veto; Shift and Ctrl are the game's
+  split and move modifiers there, Alt is free. `InventoryElement.m_equiped` is the frame `Image`
+  drawn over an equipped item, toggled by `enabled`, and a tinted copy of it is a frame of our own.
+  `UpdateGui` rebuilds every element when the inventory changes size.
+- `Player.TakeInput()` is false while any GUI is open, the inventory included; a hotkey that should
+  work with the inventory open has to re-ask the chat, console, text input and menu itself.
+  `KeyboardShortcut.IsDown` (BepInEx) refuses while any key outside the combination is held, i.e.
+  while walking, and reads legacy input; read the shortcut's keys through `ZInput` instead.
+- `InventoryGui.m_takeAllButton` / `m_stackAllButton` are the chest panel's buttons; the panel is
+  shown from `UpdateContainer` only while `m_currentContainer.IsOwner()`, so a flag set on the
+  open chest's ZDO from there always sticks. TextMeshPro is not among the staged reference
+  assemblies (`lib/`), so a copied button's label is set through its `text` property by
+  reflection rather than through `TMP_Text`.
 
 ## References
 
@@ -245,6 +384,19 @@ none of its code is copied in — the AGPL would bind the whole mod.
   eternal is an economy change rather than a convenience. Their `SetFuel` prefix is the place to
   start if that ever becomes a tweak.
 
+`~/Documents/Code/test/othervalheimmods/VentureValheim` is OrianaVenture's mod collection (MIT,
+[GitHub](https://github.com/OrianaVenture/VentureValheim)), another reference checkout; its
+`AreaRepair` is the model for `AreaRepair`, published as
+`VentureValheim/Venture_Area_Repair`. None of its code is copied in — MIT would need the notice.
+
+- `AreaRepair/src/AreaRepair.cs` — the same `Player.Repair` postfix over a distance sorted
+  `Piece.s_allPieces`, with the same per piece cost and station cache. It hard-codes 20m and has no
+  config at all, and reads its single-repair modifier through a `Player.Update` transpiler that
+  stores `ZInput.GetKey(KeyCode.LeftAlt)` in a static each frame; `AreaRepair` makes the radius and
+  the key settings and reads the key in the postfix itself, where the swing has just happened, so
+  no transpiler is needed. It also gates on `HaveStamina` only, where this one also stops before
+  the hammer breaks, and skips the eitr check its own TODO asks for.
+
 `~/Documents/Code/test/othervalheimmods/cartur-safe-stamina` is Cartur's Safe Stamina (Thunderstore
 `Cartur/Carturs_Safe_Stamina`, [GitHub](https://github.com/jekkle/cartur-safe-stamina)), the model
 for `CombatStamina` and the mod it replaces in the profile. The checkout has **no license file**,
@@ -259,3 +411,37 @@ so it is all rights reserved: read it, copy nothing.
   `RPC_OnTargeted`, and waives the four movement costs at `UseStamina` under a scope flag instead
   of zeroing the fields (see the conventions). Its README's "worth knowing" list - free swimming
   means no drowning, skills still level, other characters pay - all holds here too.
+
+`~/Documents/Code/test/othervalheimmods/SmartCraft-Storage` is Zellds' SmartCraft-Storage
+(Thunderstore `Zellds/SmartCraftStorage`, [GitHub](https://github.com/Zellds/SmartCraft-Storage)),
+the model for `NearbyCrafting` and `QuickStack` and the mod they replace in the profile. The
+checkout has **no license file**, so it is all rights reserved: read it, copy nothing. It needs
+Jötunn and syncs its gameplay settings from the server; this mod does neither.
+
+- `Shared/NearbyContainers.cs` — its chest search: a masked `Physics.OverlapSphere` cached for
+  0.25s per origin, `GetComponentInParent<Container>` (plus `Vagon.m_container` for carts), and
+  the same in-use / privacy / ward rules, re-checked in `TryClaimWriteAccess` before every write
+  (its comments spell out why: `ClaimOwnership` is no lock). `NearbyChests` keeps the rules and
+  the re-check but walks a registry filled from `Container.Awake` instead of the physics world,
+  and adds "placed by a player" and the per-chest opt-out, which it does not have (it locks
+  individual stacks instead).
+- `CraftingChestAccess/InventoryChestPatches.cs` — the same three `Inventory` patches, gated on
+  "the crafting station is set or the player is in place mode"; `NearbyChests` gates on a reach
+  the tweak opens around the named game actions instead, so hand crafting works and nothing
+  else in those modes sees the chests. Its `ChestCountCache` is the same per-frame idea.
+  `RequirementAmountPatch.cs` prints the available amount in brackets after the requirement,
+  which is worth having.
+- `QuickStack/QuickStackService.cs` — the same "only into chests that already hold it" rule,
+  moved stack by stack with `MoveItemToThis` into matching stacks then empty slots; `QuickStack`
+  uses `AddItem`'s own merge-then-place. `ItemMarking/` is its lock (a `m_customData` flag, an
+  overlay `Image` per slot from `InventoryGrid.UpdateGui`, toggled from an `OnLeftDown` prefix)
+  — the same shape as the favourite, arrived at from the game code. `Hotkeys/HotkeyPatch.cs`
+  documents the `KeyboardShortcut.IsDown` problem.
+- `Repair/RepairAllPatch.cs` — the same repair loop, arrived at from the same game code: a
+  `RepairOneItem` prefix that walks the worn items and repairs every one `CanRepair` accepts.
+  It hangs off the repair button, where `AutoRepair` hangs off opening the station, so no
+  click is needed at all; it also plays the station effect once per item and does not ask
+  `m_canRepair`.
+- `Stations/*` — its stations pull ore, food and fuel by themselves on their update ticks and
+  store their output; the roadmap wanted none of that, so `NearbyFuel` widens the manual
+  add-fuel interactions and nothing else.

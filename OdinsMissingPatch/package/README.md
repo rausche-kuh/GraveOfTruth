@@ -43,6 +43,42 @@ its own section in the config file and can be turned off on its own. Nothing nee
   list you can edit, and does so whatever the world's death penalty is set to. On a world that
   deletes the grave's contents the kept items survive that too; a world that keeps everything is
   left alone. Skill loss is untouched.
+- **Area repair** — one swing of the hammer mends the whole neighbourhood: every damaged piece
+  within 10m of the one you aim at, closest first, instead of one piece per click along every wall
+  a raid went through. Each piece costs what it always did — the same stamina, the same hammer
+  durability, the same crafting station in range — so a swing stops when the stamina runs out or
+  the hammer is one repair from breaking, and picks up where it left off on the next one. Wards are
+  respected, so a neighbour's house is not on your hammer. Hold `Left Alt` while you swing for the
+  single piece you aim at, the way the game does it. The radius and that key are both yours to set.
+- **Auto repair** — walk up to a workbench, press Use, and everything you carry that the
+  bench can repair is repaired: the forge mends what belongs to the forge, the workbench what
+  belongs to the workbench, instead of one item per click of the repair button. Which items a
+  station takes is the game's own answer, the one the repair button uses, so nothing is
+  repaired that you could not have repaired there yourself — and repairing is free in
+  Valheim, so it costs you nothing but the walk. Crafting skill still goes up for the wear
+  you mended.
+- **Nearby crafting** — crafting, upgrading and building take their materials from the chests
+  around you, without a chest being opened. What you carry is spent first, and only what is
+  missing comes out of the chests, nearest first. The crafting panel and the build menu count
+  the chests too, so a recipe reads as craftable exactly when it is: an amount your backpack
+  covers stays white, one the chests have to pay for turns yellow, and hovering an ingredient
+  tells you what you carry and what the chests hold. Only chests placed by a
+  player count, never a dungeon's or a ruin's, and every chest gets a **Nearby use** button in
+  its panel that keeps it out of all of this — for the chest you keep your emergency wood in.
+  The range is yours to set, 20m by default.
+- **Quick stack** — one key (`G` by default) stacks your inventory away into the chests around
+  you: every stack you carry goes to the nearest chest that already holds that item, topping up
+  its stacks before taking a free slot. Each chest that took something glows and shows how many
+  it took, and a message sums it up. Equipped items stay, the hotbar stays (a switch), and so
+  does anything you mark as a favourite: hold `Alt` and click an item in the inventory to give
+  it a golden frame, and quick stacking leaves it alone. The favourite is on the stack itself,
+  so it follows the stack into a chest and back. The key, the modifier and the range are
+  configurable.
+- **Nearby fuel** — adding fuel by hand reaches into the chests around you. Press Use on a fire,
+  a smelter, an oven or a shield generator as you always have: one unit goes in, out of your
+  backpack if you carry the fuel and out of the nearest chest that holds it if you do not.
+  Nothing refuels itself; a station only ever takes fuel when you give it some. Same chests as
+  nearby crafting, same button to keep one out of it, its own range.
 
 ## Configuration
 
@@ -51,7 +87,10 @@ mod. Every tweak has an `Enabled` switch and its own settings — for the range 
 `2` by default and `1` for vanilla; for combat stamina the threat radius in metres, an
 `EnragedEnemies` switch and one switch per cost; for keep gear on death the comma separated list
 of item types that stay with you, with every type the game knows listed in the setting's
-description. Changes are picked up while the game is running,
+description; for area repair the radius in metres and the key that holds it back to one piece; for
+the nearby chest tweaks the range in metres, and for quick stack the hotkey, the favourite modifier
+and whether the hotbar is stacked away too. Instant comfort and auto repair have nothing but
+their switch. Changes are picked up while the game is running,
 including from an in-game config manager: stations already standing around you are re-measured on
 the spot.
 
@@ -73,10 +112,23 @@ for anyone else, player or monster. It works the same whether the monster huntin
 your machine or by another player's, because the game already tells your client when a monster has
 you as its target. Instant comfort only touches your own Rested, and status effects are your own
 machine's business, so it needs nothing from anyone else. Fast portals only shortens your own
-trip; the portal itself, and everyone else's trips, are untouched. Keep gear on death is decided
+trip; the portal itself, and everyone else's trips, are untouched. Auto repair only touches
+the durability of the items in your own inventory, which is your own machine's business too. Keep gear on death is decided
 by the dying player's own machine, so it applies to you and to nobody else: a player without the
 mod dies by the world's rules. On someone else's server it overrides the death penalty the host
 chose, for you - ask before you bring it.
+
+Area repair does change the world - a repaired wall is repaired for everyone - but only through the
+game's own repair, one piece at a time, so it needs nothing from the server and nothing from anyone
+else. It pays the full cost for every piece and asks the same station and ward questions the game
+asks, so all it saves you is the clicking.
+
+Nearby crafting, quick stack and nearby fuel all write to chests, which is world state, and they
+do it the way you would by hand: the chest is taken over by your machine for the write, exactly
+as when you open it. A chest someone else has open is left alone, and so is one you could not
+open yourself — a private chest of theirs, or one inside a ward you have no access to. The
+"Nearby use" switch is stored with the chest, so it holds for everyone with the mod. None of it
+needs anyone else to have the mod, and none of it runs on a dedicated server.
 
 ## Install
 
@@ -96,4 +148,10 @@ does, which defaults to vanilla and can be enforced by a server. Fast portals do
 metals through and can be enforced by a server. Combat stamina is modelled on
 Cartur's [Safe Stamina](https://thunderstore.io/c/valheim/p/Cartur/Carturs_Safe_Stamina/), which
 waives the same costs inside a radius; this one also counts an enemy that has noticed you and is
-coming for you, wherever it is. Do not run both.
+coming for you, wherever it is. Do not run both. Area repair does what
+[Venture Area Repair](https://thunderstore.io/c/valheim/p/VentureValheim/Venture_Area_Repair/)
+does, which reaches a fixed 20m; this one lets you set the radius and the single repair key. Do not
+run both. Nearby crafting, quick stack and auto repair cover the same ground as Zellds'
+[SmartCraft-Storage](https://thunderstore.io/c/valheim/p/Zellds/SmartCraftStorage/), which goes
+much further — stations that feed and empty themselves, restocking, animal feeding — if you want a
+base that runs itself; this one keeps every move yours. Do not run both.

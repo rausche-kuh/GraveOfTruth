@@ -27,6 +27,11 @@ namespace OdinsMissingPatch
             InstantComfort.Instance,
             FastPortals.Instance,
             KeepGearOnDeath.Instance,
+            AreaRepair.Instance,
+            NearbyCrafting.Instance,
+            QuickStack.Instance,
+            NearbyFuel.Instance,
+            AutoRepair.Instance,
         };
 
         void Awake()
