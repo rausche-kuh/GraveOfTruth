@@ -5,6 +5,7 @@ build, the reference assemblies and the scripts are shared.
 
 **Mods:** `GraveOfTruth/` — makes dying embarrassing (see `GraveOfTruth/CLAUDE.md`).
 `OdinsMissingPatch/` — a collection of configurable QOL tweaks (see `OdinsMissingPatch/CLAUDE.md`).
+`ThisIsValheim/` — doors are kicked open (see `ThisIsValheim/CLAUDE.md`).
 
 ## Layout
 
