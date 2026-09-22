@@ -17,6 +17,10 @@ namespace OdinsMissingPatch
     /// A favourite is a flag on the stack itself and only means anything in your own backpack:
     /// it can only be set there, and a stack that leaves it — into a chest, into the grave your
     /// death fills, onto the ground — loses the mark. Splitting a favourite makes two.
+    ///
+    /// The same modifier-click in an open chest's grid marks the chest for that kind of item
+    /// instead (<see cref="ChestFavorites"/>): a marked chest is stacked into even when it holds
+    /// none of it, and is filled before the chests that merely happen to hold one.
     /// </summary>
     internal sealed class QuickStack : Tweak
     {
@@ -99,6 +103,7 @@ namespace OdinsMissingPatch
                 return;
             }
             Dictionary<Container, int> stashed = new Dictionary<Container, int>();
+            List<Container> ordered = new List<Container>();
             int moved = 0;
             foreach (ItemDrop.ItemData item in new List<ItemDrop.ItemData>(backpack.GetAllItems()))
             {
@@ -110,15 +115,18 @@ namespace OdinsMissingPatch
                 {
                     continue;
                 }
-                foreach (Container chest in chests)
+                string name = item.m_shared.m_name;
+                Order(chests, name, ordered);
+                foreach (Container chest in ordered)
                 {
                     if (item.m_stack <= 0)
                     {
                         break;
                     }
                     Inventory inventory = chest.GetInventory();
-                    string name = item.m_shared.m_name;
-                    if (!inventory.ContainsItemByName(name) || !NearbyChests.Claim(chest) || !inventory.ContainsItemByName(name))
+                    // Claim reloads the chest from its ZDO, so what it holds is asked again after it.
+                    if (!Takes(chest, inventory, name) || !NearbyChests.Claim(chest)
+                        || !Takes(chest, inventory, name))
                     {
                         continue;
                     }
@@ -161,6 +169,39 @@ namespace OdinsMissingPatch
                 : "Nothing to stack away");
         }
 
+        /// <summary>
+        /// Whether a chest is one this kind of item may go to: it already holds one, or it has
+        /// been marked for it, which is the same thing said in advance.
+        /// </summary>
+        private static bool Takes(Container chest, Inventory inventory, string name)
+        {
+            return inventory.ContainsItemByName(name) || ChestFavorites.Accepts(chest, name);
+        }
+
+        /// <summary>
+        /// The chests to try for one kind of item: those marked for it first, each group still
+        /// nearest first, since a mark says where the item belongs while holding one is only a
+        /// hint. Refills the list it is given rather than making one per item.
+        /// </summary>
+        private static void Order(List<Container> chests, string name, List<Container> ordered)
+        {
+            ordered.Clear();
+            foreach (Container chest in chests)
+            {
+                if (ChestFavorites.Accepts(chest, name))
+                {
+                    ordered.Add(chest);
+                }
+            }
+            foreach (Container chest in chests)
+            {
+                if (!ChestFavorites.Accepts(chest, name))
+                {
+                    ordered.Add(chest);
+                }
+            }
+        }
+
         private static void Add(Dictionary<Container, int> stashed, Container chest, int count)
         {
             stashed.TryGetValue(chest, out int total);
@@ -187,8 +228,11 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
-        /// A click with the modifier held toggles the favourite instead of picking the item up.
-        /// The grid raises its select callback from here, so returning false is the whole veto.
+        /// A click with the modifier held toggles a favourite instead of picking the item up:
+        /// the stack itself in the backpack, the chest's mark for that kind of item in an open
+        /// chest. The grid raises its select callback from here, so returning false is the whole
+        /// veto. Each half answers to the tweaks that read it, so the chest's marks can still be
+        /// set with quick stacking switched off and Chest buttons on.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGrid), "OnLeftDown")]
         private static class ToggleFavorite
@@ -196,8 +240,13 @@ namespace OdinsMissingPatch
             private static bool Prefix(InventoryGrid __instance, UIInputHandler clickHandler)
             {
                 Player player = Player.m_localPlayer;
-                if (!Instance.On || player == null || __instance.m_inventory == null
+                if (player == null || __instance.m_inventory == null
                     || !Hotkeys.Held(Instance.favoriteModifier.Value))
+                {
+                    return true;
+                }
+                bool backpack = __instance.m_inventory == player.GetInventory();
+                if (backpack ? !Instance.On : !ChestFavorites.Used)
                 {
                     return true;
                 }
@@ -207,16 +256,33 @@ namespace OdinsMissingPatch
                 {
                     return true;
                 }
-                if (__instance.m_inventory != player.GetInventory())
+                if (!backpack)
                 {
-                    // A mark set anywhere else is stripped again the moment that inventory
-                    // changes, so refuse the click and say why instead of doing nothing.
-                    player.Message(MessageHud.MessageType.Center, "Favourites only in your inventory");
-                    return false;
+                    return MarkChest(player, __instance.m_inventory, item);
                 }
                 SetFavorite(item, !IsFavorite(item));
                 // Re-weighs the backpack; harmless.
                 __instance.m_inventory.Changed();
+                return false;
+            }
+
+            /// <summary>
+            /// Marks the open chest for the kind of item clicked, or unmarks it. Any other
+            /// inventory has no mark to set: a flag on the stack would be stripped the moment
+            /// that inventory changed, so the click is refused with a word on why.
+            /// </summary>
+            private static bool MarkChest(Player player, Inventory inventory, ItemDrop.ItemData item)
+            {
+                Container chest = ChestFavorites.OpenChest(inventory);
+                if (chest == null)
+                {
+                    player.Message(MessageHud.MessageType.Center, "Favourites only in your inventory");
+                    return false;
+                }
+                string name = item.m_shared.m_name;
+                bool marked = ChestFavorites.Toggle(chest, name);
+                player.Message(MessageHud.MessageType.Center, (marked
+                    ? "This chest now takes " : "This chest no longer takes ") + ChestFavorites.Localize(name));
                 return false;
             }
         }
@@ -274,6 +340,10 @@ namespace OdinsMissingPatch
         /// filled frame leaves the game's own equipped highlight visible underneath, so an
         /// equipped favourite still reads as equipped. Slots are rebuilt when an inventory
         /// changes size, so a border whose slot is gone is simply made again.
+        ///
+        /// Only the backpack's own flag is drawn. A chest's marks are not: a marked kind the chest
+        /// holds none of has no slot to draw on, so a border would show half of them and hide the
+        /// rest - the panel's Clear favourites button names the whole list in its tooltip instead.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
         private static class ShowFavorites

@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- A chest can now be made the home of a kind of item: Alt-click an item inside an open chest, the
+  same click that makes a favourite in your own inventory, and the chest is marked for that kind.
+  Quick stack and Fill the chest's stacks then put it there even when the chest holds none of it,
+  and quick stacking fills the chests marked for an item before the ones that only happen to hold
+  one — so a chest emptied of its wood still draws the next load back.
+- While a chest has any marks, a Clear favourites button appears in its panel next to the Nearby
+  use switch: it counts them, lists them in its tooltip and clears them all in one click.
+
 ## 0.2.2
 
 - Auto shield: drawing a one handed weapon now raises a shield with it, if your off hand is empty

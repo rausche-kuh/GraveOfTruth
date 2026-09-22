@@ -12,10 +12,11 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | `src/OdinsMissingPatch.cs` | BepInEx entry point: binds every tweak's config, then patches all. |
 | `src/Tweak.cs` | The base class: the section, the `Enabled` switch, `BindMultiplier`, `OnSettingChanged`. |
 | `src/Tweaks/<Name>.cs` | One quality of life change, with its `[HarmonyPatch]` classes nested inside it. |
-| `src/NearbyChests.cs` | Shared by the chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag. |
+| `src/NearbyChests.cs` | Shared by the chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag, and the chest panel's two text buttons. |
+| `src/ChestFavorites.cs` | The kinds of item a chest is marked to take, on its ZDO: read by QuickStack and ChestButtons, set by an Alt-click in the chest's grid, listed in the Clear favourites button's tooltip. |
 | `src/ChestGlow.cs` | The golden pulse plus floating text on a chest (`ChestGlow.Flash`). |
 | `src/Hotkeys.cs` | `Pressed` / `Held` for a `KeyboardShortcut`, read through `ZInput`. |
-| `src/PanelButtons.cs` | Icon buttons for the inventory screen, cut from the chest panel's Take all button. Used by ChestButtons, InventoryButtons and the Nearby use button. |
+| `src/PanelButtons.cs` | Icon buttons for the inventory screen, cut from the chest panel's Take all button, and where a column beside a panel is. Used by ChestButtons, InventoryButtons and the chest panel's text buttons. |
 | `src/InventorySorter.cs` | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps. |
 | `src/MaterialOrder.cs` | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies. |
 | `assets/icons/` | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. |
@@ -42,7 +43,7 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | --- | --- |
 | adding or changing any tweak | [`docs/conventions.md`](docs/conventions.md) — tweak shape, config, multipliers and rescaling, the patch shapes |
 | looking up what a tweak does | [`docs/tweaks.md`](docs/tweaks.md) — one entry per tweak, defaults and scope |
-| anything reaching into chests | [`docs/chests.md`](docs/chests.md) — the reach, `Claim`, container ZDOs, requirement checks, refuelling, the favourite flag |
+| anything reaching into chests | [`docs/chests.md`](docs/chests.md) — the reach, `Claim`, container ZDOs, requirement checks, refuelling, the two favourites |
 | anything drawn in the inventory screen | [`docs/inventory-ui.md`](docs/inventory-ui.md) — panel buttons, panel geometry, `InventoryGui`, the sorter |
 | sorting or classifying items | [`docs/item-order.md`](docs/item-order.md) — `MaterialOrder`, the `ObjectDB` crafting tree |
 | stations, fires, demisters, repairing | [`docs/building-and-world.md`](docs/building-and-world.md) |

@@ -55,6 +55,11 @@ because I want them, not because I can argue they are neutral:
   already holds that item, merging into its stacks before taking a slot. Each chest that took
   something glows with a count. Equipped items, the hotbar (a switch) and favourites stay —
   `Alt`-click an item to make it a favourite.
+- **Chest favourites** — `Alt`-click an item inside an open chest to mark the chest for that kind
+  of item. Quick stack and Fill the chest's stacks put it there even when the chest holds none,
+  and the chests marked for an item are filled before those that merely hold one, so an emptied
+  chest keeps its job. A Clear favourites button in the chest panel lists what the chest is marked
+  for in its tooltip and wipes the marks in one click.
 - **Nearby fuel** — lets the four manual add-fuel interactions (fire, smelter, oven, shield
   generator) draw their one unit from a chest when your backpack has none.
 - **Add all** — `Shift` + Use on a fire, smelter, kiln, oven, cooking station, shield generator or

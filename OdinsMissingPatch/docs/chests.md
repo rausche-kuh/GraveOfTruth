@@ -1,7 +1,7 @@
 # Chests
 
-`src/NearbyChests.cs`, `src/ChestGlow.cs` and the tweaks that reach into chests
-(NearbyCrafting, NearbyFuel, QuickStack, AddAll, ChestButtons).
+`src/NearbyChests.cs`, `src/ChestFavorites.cs`, `src/ChestGlow.cs` and the tweaks that reach into
+chests (NearbyCrafting, NearbyFuel, QuickStack, AddAll, ChestButtons).
 
 ## Conventions
 
@@ -19,7 +19,16 @@
   back once it closes.
 - Shared code that is not a tweak (`NearbyChests`) may hold patches of its own when the thing
   they serve belongs to no single tweak (the registry, the opt-out button); they gate on
-  `NearbyChests.AnyTweakOn` rather than on one tweak.
+  `NearbyChests.AnyTweakOn` rather than on one tweak. State that outlives a tweak's switch and
+  belongs to the chest rather than to the player (the opt-out flag, `ChestFavorites`) lives with
+  it, and each such flag has its own gate naming the tweaks that read it (`ChestFavorites.Used`
+  is QuickStack or ChestButtons), so a player who runs only one of them can still set it.
+- There are two favourites and they never mix: QuickStack's is a flag on one stack and only in
+  the backpack, `ChestFavorites` is a list of item *kinds* on one chest. The same Alt-click sets
+  both - which one depends on the grid clicked - but only the backpack's is drawn on a slot. A
+  chest's marks are not: the list can name a kind the chest holds none of, which has no slot to
+  draw on, so a border would show some marks and hide others. They are shown whole or not at all,
+  in the Clear favourites button's tooltip.
 - Every chest write goes through `NearbyChests.Claim`: re-checks the in-reach rule (someone may
   have opened the chest since it was found), reloads the inventory from the ZDO, then claims
   ownership. `Find` hands out one reused list, so copy it before a loop that writes. The one
@@ -51,6 +60,14 @@
   source's, and an error line was logged — hence `HaveEmptySlot() || FindFreeStackSpace() > 0`
   first. `FindFreeStackItem` matches name, quality, world level and cheated flag, not
   `m_customData`, so a flagged stack absorbs unflagged units and keeps its flag.
+- A chest's favourites are one ZDO string (`OMP_ChestFavorites`) holding the shared names
+  (`$item_wood`, the localization token) joined by newlines with one at each end, so a name is
+  always matched between two separators and Wood never matches inside WoodArrow. It is read on
+  every grid refresh and once per item per chest in a quick stack, so `Marks` hands the raw
+  string out once and `Marked` searches it without splitting or concatenating; only the rare
+  writes and the tooltip's list pay for a `Split`. A mark means "treat this chest as holding
+  that item": it never adds a slot, so the `HaveEmptySlot() || FindFreeStackSpace() > 0` check
+  in front of `AddItem` still decides whether anything actually fits.
 - `ItemData.m_customData` is a string dictionary saved with the item (inventory blob, character
   file, dropped item) and copied by `Clone()`, so it is the place for a per-stack flag
   (`QuickStack`'s favourite); splitting a stack copies the flag.

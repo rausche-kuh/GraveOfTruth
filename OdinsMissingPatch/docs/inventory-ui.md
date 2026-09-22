@@ -1,7 +1,7 @@
 # The inventory screen
 
 `src/PanelButtons.cs`, `src/InventorySorter.cs` and the tweaks that draw into the screen
-(ChestButtons, InventoryButtons, the Nearby use button).
+(ChestButtons, InventoryButtons, the chest panel's two text buttons).
 
 ## Conventions
 
@@ -22,12 +22,21 @@
   meet, and two is all the gap holds; the chest's four stand in one column from the top down
   (`LayoutChestColumn`). Each owner places from its
   per-frame postfix (`UpdateContainer`, `UpdateInventory`) rather than once at creation, since
-  buttons come and go with their tweaks and the panel resizes with the inventory. The Nearby
-  use button takes the game's Take all spot (top left of the chest panel) while
-  `ChestButtons.HidesVanilla`, else the top of that column; it is widened to its label's TMP
-  `preferredWidth` (reflection) plus a margin each side, since the label outgrows Take all.
+  buttons come and go with their tweaks and the panel resizes with the inventory. The two text
+  buttons of the next bullet share the chest's column, but never with those four: they only fall
+  into it while ChestButtons is off, which is exactly when its own buttons are not there.
   Cancel any drag first (`SetupDragItem(null, null, 1)`), as the game's buttons do, so a held
   item is not moved under the cursor.
+- A button that keeps its label instead of taking an icon is a `NearbyChests.TextButton`: the
+  same copy of Take all, widened to the label's TMP `preferredWidth` (reflection) plus a margin
+  each side. The two of them - the Nearby use switch and Clear favourites - take the game's Take
+  all and Stack all spots while `ChestButtons.HidesVanilla`, which is the only free width the
+  chest panel's top band has, the chest's name sitting centred between them; each keeps the edge
+  its vanilla button is lined up on (Take all's left, Stack all's right) and grows the other way.
+  Without the vanilla buttons hidden that band is full, and they fall into the column beside the
+  chest panel from its top down, the caller counting the slots it has actually used there. A
+  label or tooltip that costs something to build (Clear favourites names every marked kind) is
+  built only when the state behind it changed, since the postfix runs every frame.
 - A sort never adds or drops a unit: `InventorySorter` merges by the game's own stack rule plus
   variant and custom data (so a tagged stack never swallows a plain one), refuses without
   touching anything when the free slots would not hold the items, and only ever writes
@@ -46,7 +55,11 @@
   borrows to sit exactly on the slot. A mark laid over that frame has to be a border rather than a
   fill, or an equipped item and a favourite look the same — four stretched `Image`s with no sprite,
   anchored to one side each and pivoted onto it, need no asset.
-  `UpdateGui` rebuilds every element when the inventory changes size.
+  `UpdateGui` rebuilds every element when the inventory changes size, and `UpdateInventory` calls
+  it every frame the screen is up, so a per-slot pass over it has to stay allocation free. Only
+  the backpack's stack flag is drawn there: a chest's marked kinds are a property of the chest and
+  can name a kind it holds none of, which has no slot, so they are listed in the Clear favourites
+  button's tooltip instead of shown half on the grid.
 - `Player.TakeInput()` is false while any GUI is open, the inventory included; a hotkey that should
   work with the inventory open has to re-ask the chat, console, text input and menu itself.
   `KeyboardShortcut.IsDown` (BepInEx) refuses while any key outside the combination is held, i.e.

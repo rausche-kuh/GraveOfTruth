@@ -69,7 +69,12 @@ player's own save).
   the nearest chest in range that already holds that item, with a three-second glow and a floating
   count per chest. An Alt-click in the player's own inventory marks a stack as a favourite (golden
   frame), which quick stacking skips, as it does equipped items and the hotbar; the mark exists only
-  in that inventory and is stripped from every stack that leaves it.
+  in that inventory and is stripped from every stack that leaves it. The same Alt-click in an open
+  chest's grid marks the *chest* for that kind of item (`ChestFavorites`, on the chest's ZDO): a
+  marked chest counts as holding it, and is filled before the chests that do. The marks get no
+  border of their own; the chest panel's Clear favourites button lists them in its tooltip. Read by
+  Chest buttons' Fill the chest's stacks as well, so either tweak alone is enough for the marks to
+  mean something.
 - **Nearby fuel** — the four manual add-fuel interactions (fire, smelter, oven, shield generator)
   see the chests the same way, so a unit comes out of a chest when the backpack has none; nothing
   refuels itself.
@@ -88,7 +93,8 @@ player's own save).
   shared with Inventory buttons), which tops the backpack's stacks up to their caps and opens no
   new one; take all, place all, fill the chest's stacks from the backpack and
   sort the chest, in a column beside the chest panel. The two that put things in skip worn gear,
-  favourites and (a switch) the hotbar.
+  favourites and (a switch) the hotbar; Fill the chest's stacks also takes the kinds the chest is
+  marked for, whether or not it holds any.
 - **Inventory buttons** — stack nearby (quick stacking by click, shown while that tweak is on and no
   chest is open) and sort, in the same column. The sort merges stacks and lays out by kind, name and
   quality, leaving equipped items, favourites and, by default, the hotbar in place; materials come
