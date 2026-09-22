@@ -13,7 +13,7 @@
 ```
 
 `scripts\setup.ps1` and `scripts\deploy.ps1` are the same thing on Windows.
-[scripts/README.md](scripts/README.md) documents all five scripts, their flags, how to add a new
+[scripts/README.md](scripts/README.md) documents all six scripts, their flags, how to add a new
 mod, and what to do when something goes wrong.
 
 ## Layout
@@ -22,7 +22,7 @@ mod, and what to do when something goes wrong.
 GraveOfTruth/          one mod: <Name>/<Name>.csproj, src/, assets/, package/, README.md
   package/             manifest.json, icon.png, the Thunderstore page README.md and CHANGELOG.md
 OdinsMissingPatch/     the same shape, minus assets/
-scripts/               setup, deploy, package, decompile, clean (.sh and .ps1)
+scripts/               setup, deploy, bump, package, decompile, clean (.sh and .ps1)
 Directory.Build.props  the build every mod shares
 lib/                   game + BepInEx reference assemblies   (generated, gitignored)
 decompiled/            the game's own C#, for API lookup      (generated, gitignored)

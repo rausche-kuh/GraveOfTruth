@@ -1,6 +1,6 @@
 # The scripts
 
-Five scripts, twice: `*.ps1` for Windows PowerShell, `*.sh` for bash. They share `lib.ps1` /
+Six scripts, twice: `*.ps1` for Windows PowerShell, `*.sh` for bash. They share `lib.ps1` /
 `lib.sh` and the gitignored state they produce — `lib/`, `decompiled/`, `Valheim.props`, `dist/` —
 so the two sets are interchangeable on the same checkout.
 
@@ -8,13 +8,15 @@ so the two sets are interchangeable on the same checkout.
 | --- | --- |
 | `setup` | Find Valheim + BepInEx, stage the reference assemblies into `lib/`, write `Valheim.props`. |
 | `deploy` | Build and install into your mod manager profile. |
+| `bump` | Raise a mod's version for a release and close off its changelog. |
 | `package` | Build the Thunderstore zips in `dist/`. |
 | `decompile` | Dump the game's own C# into `decompiled/` for API lookup. |
-| `clean` | Delete what the other four produced. |
+| `clean` | Delete what the other five produced. |
 
 ```powershell
 .\scripts\setup.ps1      # once, and after every Valheim update
 .\scripts\deploy.ps1     # build + install every mod
+.\scripts\bump.ps1       # raise a version, rename ## Unreleased
 .\scripts\package.ps1    # dist\<Mod>-<version>.zip
 .\scripts\decompile.ps1  # game source into decompiled\
 .\scripts\clean.ps1      # bin\, obj\, dist\
@@ -23,6 +25,7 @@ so the two sets are interchangeable on the same checkout.
 ```bash
 ./scripts/setup.sh
 ./scripts/deploy.sh
+./scripts/bump.sh
 ./scripts/package.sh
 ./scripts/decompile.sh
 ./scripts/clean.sh
@@ -90,6 +93,27 @@ Builds (Release by default) and copies each mod's DLL, everything in its `assets
 `manifest.json` and its `icon.png` into the profile. The profile override is for a one-off install
 against a second profile without re-running `setup`.
 
+## `bump` — raise a version for a release
+
+```powershell
+.\scripts\bump.ps1 [mod] [major|minor|patch] [-Yes]
+```
+```bash
+./scripts/bump.sh [mod] [major|minor|patch] [-y]
+```
+
+Asks which mod and which part of `major.minor.patch` to raise — both menus are skipped when given
+as arguments — then shows the new version, what the release would ship and waits for a `y`. On
+confirmation it writes all three places a version lives:
+
+- the `VERSION` const in the mod's plugin source, which is the source of truth,
+- `version_number` in its `package/manifest.json`,
+- the `## Unreleased` heading in its `package/CHANGELOG.md`, which becomes `## <version>`.
+
+A minor bump zeroes the patch, a major one zeroes both. If there is nothing under `## Unreleased`
+it says so before asking, since that release would show up on Thunderstore with no notes. Nothing
+is built, committed or published — run `package` afterwards and upload the zip.
+
 ## `package` — Thunderstore zips
 
 ```powershell
@@ -111,9 +135,8 @@ links relative to the repo — Thunderstore renders it standalone, so a `../` li
 `## <version>` section per release, newest first, with `## Unreleased` on top for what has not
 shipped yet. `<Mod>/README.md` is the dev facing one and is not shipped.
 
-Only bump `VERSION` for an actual Thunderstore release; when you do, rename the `## Unreleased`
-section in `package/CHANGELOG.md` to that version and check `dependencies` in that mod's
-`package/manifest.json` against the current BepInEx pack first.
+Only bump `VERSION` for an actual Thunderstore release, and use `bump` above to do it.
+Check `dependencies` in that mod's `package/manifest.json` against the current BepInEx pack first.
 
 ## `decompile` — read the game's API
 
