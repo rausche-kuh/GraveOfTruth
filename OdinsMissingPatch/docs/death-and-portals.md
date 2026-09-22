@@ -24,7 +24,11 @@ FastPortals, KeepGearOnDeath.
   `Inventory` methods filter on `!m_questItem && !m_equipped` and have no other caller, so
   "equipped" is the game's whole notion of "stays with you", which is why `KeepGearOnDeath` keeps
   its items equipped (skipping their `UnequipItem` while the local player's `CreateTombStone`
-  runs) and folds its type list into both filters. Respawn goes through `Player.Load`, which
+  runs) and folds its type list into both filters. All of that is gated on the world's death
+  penalty being the lowest step of the slider, "Casual" - which is exactly `DeathKeepEquip`, the
+  only step that keeps equipment, so on the worlds the tweak does run on the game skips its own
+  `UnequipAllItems` and never reaches `RemoveUnequipped`: the unequip and delete patches only
+  bite on a world that combined those keys by hand. Respawn goes through `Player.Load`, which
   unequips everything and then `EquipInventoryItems()` re-equips whatever has `m_equipped` set -
   so gear that goes through death equipped comes back worn. An empty tombstone destroys itself
   (`TombStone.UpdateDespawn`, not in use and zero items). `ItemType` is

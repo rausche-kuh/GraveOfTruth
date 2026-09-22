@@ -19,6 +19,8 @@
 - Keep gear on death: weapons, armour, ammunition, tools, the belt and your food stay with you
   when you die, and stay equipped, so you respawn ready to fight your way back. Only materials,
   trophies and the rest of the run's loot go to the grave. Which item types stay is configurable.
+  Only applies on a world whose death penalty is set to Casual, the lowest setting — on a world
+  set any harsher the grave takes everything the game says it should.
 - Nearby crafting: crafting, upgrading and building take their materials from chests around you
   without opening them, your backpack first. The counts in the crafting panel and the build menu
   include those chests: an amount your backpack covers stays white, one that needs the chests

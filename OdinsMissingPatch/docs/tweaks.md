@@ -55,7 +55,8 @@ player's own save).
   loaded, not after the fixed eight seconds; the fade is shorter too.
 - **Keep gear on death** — items of a configurable list of types (weapons, armour, ammo, tools,
   utility, trinkets, consumables by default) stay in the inventory and stay equipped when the player
-  dies, whatever the world's death penalty; only the rest goes to the grave. Owner-only code path.
+  dies; only the rest goes to the grave. Only on a world whose death penalty is Casual, the lowest
+  step of the slider (`GlobalKeys.DeathKeepEquip`); inert on any harsher one. Owner-only code path.
 - **Area repair** — one `Player.Repair` swing carries on to every damaged `Piece` within a
   configurable radius (10m) of the one the player aims at, closest first, at the game's own cost per
   piece. It writes through the game's own `WearNTear.Repair` RPC, so it needs no server install.
