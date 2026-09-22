@@ -98,15 +98,16 @@ because I want them, not because I can argue they are neutral:
 `Enabled` switch; the ranges have a multiplier (`1` is vanilla), and the rest have the settings
 named above. Changes apply while the game runs, including from an in-game config manager.
 
-## Translations
+## Translations (AI generated)
 
-The mod's buttons, hover text and messages follow the language Valheim is set to. English ships
-with it; any other language is a column in `translations.csv`, which sits next to the DLL in
-`BepInEx/plugins/rauschekuh-OdinsMissingPatch/`. Open it in a spreadsheet or a text editor, add a
-column headed with the language exactly as Valheim names it (`German`, `Russian`,
-`Portuguese_Brazilian`, ...) and fill in the rows — anything left empty stays English, and `$1`
-and `$2` are the numbers and item names the game fills in, which may stand anywhere in the
-sentence. Send one over and it ships with the next version.
+The mod's buttons, hover text and messages follow the language Valheim is set to. English, German,
+Russian, Chinese, Spanish, French, Brazilian Portuguese, Polish, Italian, Japanese and Ukrainian
+ship with it, each built on Valheim's own wording. Any other language is a column in
+`translations.csv`, which sits next to the DLL in `BepInEx/plugins/rauschekuh-OdinsMissingPatch/`.
+Open it in a spreadsheet or a text editor, add a column headed with the language exactly as Valheim
+names it (`Dutch`, `Czech`, `Portuguese_European`, ...) and fill in the rows — anything left empty
+stays English, and `$1` and `$2` are the numbers and item names the game fills in, which may stand
+anywhere in the sentence. Send one over and it ships with the next version.
 
 ## Multiplayer
 

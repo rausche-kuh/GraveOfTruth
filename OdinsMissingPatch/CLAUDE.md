@@ -7,22 +7,22 @@ Twenty tweaks are in the source; `docs/tweaks.md` is the index of what each one 
 (client side, world state, character) and which deep note covers it. Most are client side: the
 chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the character.
 
-| Path | What |
-| --- | --- |
-| `src/OdinsMissingPatch.cs` | BepInEx entry point: binds every tweak's config, then patches all. |
-| `src/Tweak.cs` | The base class: the section, the `Enabled` switch, `BindMultiplier`, `OnSettingChanged`. |
-| `src/Tweaks/<Name>.cs` | One quality of life change, with its `[HarmonyPatch]` classes nested inside it. |
-| `src/NearbyChests.cs` | Shared by the chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag, and the chest panel's two text buttons. |
-| `src/ChestFavorites.cs` | The kinds of item a chest is marked to take, on its ZDO: read by QuickStack and ChestButtons, set by an Alt-click in the chest's grid, listed in the Clear favourites button's tooltip. |
-| `src/ChestGlow.cs` | The golden pulse plus floating text on a chest (`ChestGlow.Flash`). |
-| `src/Hotkeys.cs` | `Pressed` / `Held` for a `KeyboardShortcut`, read through `ZInput`. |
-| `src/PanelButtons.cs` | Icon buttons for the inventory screen, cut from the chest panel's Take all button, and where a column beside a panel is. Used by ChestButtons, InventoryButtons and the chest panel's text buttons. |
-| `src/InventorySorter.cs` | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps. |
-| `src/MaterialOrder.cs` | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies. |
-| `src/Translations.cs` | Hands `assets/translations.csv` to the game's localization on every language setup. |
-| `assets/icons/` | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. |
-| `assets/translations.csv` | Every word the mod shows, one row per `$omp_` token, one column per language. |
-| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
+| Path                       | What                                                                                                                                                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/OdinsMissingPatch.cs` | BepInEx entry point: binds every tweak's config, then patches all.                                                                                                                                   |
+| `src/Tweak.cs`             | The base class: the section, the `Enabled` switch, `BindMultiplier`, `OnSettingChanged`.                                                                                                             |
+| `src/Tweaks/<Name>.cs`     | One quality of life change, with its `[HarmonyPatch]` classes nested inside it.                                                                                                                      |
+| `src/NearbyChests.cs`      | Shared by the chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag, and the chest panel's two text buttons. |
+| `src/ChestFavorites.cs`    | The kinds of item a chest is marked to take, on its ZDO: read by QuickStack and ChestButtons, set by an Alt-click in the chest's grid, listed in the Clear favourites button's tooltip.              |
+| `src/ChestGlow.cs`         | The golden pulse plus floating text on a chest (`ChestGlow.Flash`).                                                                                                                                  |
+| `src/Hotkeys.cs`           | `Pressed` / `Held` for a `KeyboardShortcut`, read through `ZInput`.                                                                                                                                  |
+| `src/PanelButtons.cs`      | Icon buttons for the inventory screen, cut from the chest panel's Take all button, and where a column beside a panel is. Used by ChestButtons, InventoryButtons and the chest panel's text buttons.  |
+| `src/InventorySorter.cs`   | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps.                                                                                                       |
+| `src/MaterialOrder.cs`     | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies.                                                                                                  |
+| `src/Translations.cs`      | Hands `assets/translations.csv` to the game's localization on every language setup.                                                                                                                  |
+| `assets/icons/`            | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL.                                                                                                                            |
+| `assets/translations.csv`  | Every word the mod shows, one row per `$omp_` token, one column per language                                                                                                                         |
+| `package/`                 | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`).                                                           |
 
 ## The rules that always apply
 
@@ -44,18 +44,18 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 
 ## Where the details live
 
-| Read before | Doc |
-| --- | --- |
-| adding or changing any tweak | [`docs/conventions.md`](docs/conventions.md) — tweak shape, config, multipliers and rescaling, the patch shapes |
-| looking up what a tweak does | [`docs/tweaks.md`](docs/tweaks.md) — one entry per tweak, defaults and scope |
-| anything reaching into chests | [`docs/chests.md`](docs/chests.md) — the reach, `Claim`, container ZDOs, requirement checks, refuelling, the two favourites |
-| anything drawn in the inventory screen | [`docs/inventory-ui.md`](docs/inventory-ui.md) — panel buttons, panel geometry, `InventoryGui`, the sorter |
-| any word a player reads | [`docs/translations.md`](docs/translations.md) — the tokens, the CSV, what translates itself and what does not |
-| sorting or classifying items | [`docs/item-order.md`](docs/item-order.md) — `MaterialOrder`, the `ObjectDB` crafting tree |
-| stations, fires, demisters, repairing | [`docs/building-and-world.md`](docs/building-and-world.md) |
-| stamina costs and what counts as hostile | [`docs/stamina.md`](docs/stamina.md) |
-| Rested, comfort and healing | [`docs/comfort-and-healing.md`](docs/comfort-and-healing.md) |
-| portals and the death path | [`docs/death-and-portals.md`](docs/death-and-portals.md) |
-| the radial menu and guardian powers | [`docs/radial-menu.md`](docs/radial-menu.md) |
-| equipping, the hotbar, the equip queue | [`docs/equipping.md`](docs/equipping.md) |
-| touching ground another mod already covers | [`docs/references.md`](docs/references.md) — the reference checkouts, what each solves and how this mod differs |
+| Read before                                | Doc                                                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| adding or changing any tweak               | [`docs/conventions.md`](docs/conventions.md) — tweak shape, config, multipliers and rescaling, the patch shapes             |
+| looking up what a tweak does               | [`docs/tweaks.md`](docs/tweaks.md) — one entry per tweak, defaults and scope                                                |
+| anything reaching into chests              | [`docs/chests.md`](docs/chests.md) — the reach, `Claim`, container ZDOs, requirement checks, refuelling, the two favourites |
+| anything drawn in the inventory screen     | [`docs/inventory-ui.md`](docs/inventory-ui.md) — panel buttons, panel geometry, `InventoryGui`, the sorter                  |
+| any word a player reads                    | [`docs/translations.md`](docs/translations.md) — the tokens, the CSV, what translates itself and what does not              |
+| sorting or classifying items               | [`docs/item-order.md`](docs/item-order.md) — `MaterialOrder`, the `ObjectDB` crafting tree                                  |
+| stations, fires, demisters, repairing      | [`docs/building-and-world.md`](docs/building-and-world.md)                                                                  |
+| stamina costs and what counts as hostile   | [`docs/stamina.md`](docs/stamina.md)                                                                                        |
+| Rested, comfort and healing                | [`docs/comfort-and-healing.md`](docs/comfort-and-healing.md)                                                                |
+| portals and the death path                 | [`docs/death-and-portals.md`](docs/death-and-portals.md)                                                                    |
+| the radial menu and guardian powers        | [`docs/radial-menu.md`](docs/radial-menu.md)                                                                                |
+| equipping, the hotbar, the equip queue     | [`docs/equipping.md`](docs/equipping.md)                                                                                    |
+| touching ground another mod already covers | [`docs/references.md`](docs/references.md) — the reference checkouts, what each solves and how this mod differs             |

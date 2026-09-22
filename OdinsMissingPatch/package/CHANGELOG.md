@@ -12,8 +12,10 @@
   while the screen fades out; every button now stays put until the panel is gone.
 - While a chest has any marks, a Clear favourites button appears in its panel next to the Nearby
   use switch: it counts them, lists them in its tooltip and clears them all in one click.
-- Every word the mod shows now follows the language Valheim is set to, and can be translated by
-  adding a column to `translations.csv` beside the DLL. English is what ships today.
+- Every word the mod shows now follows the language Valheim is set to. English, German, Russian,
+  Chinese, Spanish, French, Brazilian Portuguese, Polish, Italian, Japanese and Ukrainian ship with
+  it, each built on Valheim's own wording, and any other language is a column added to
+  `translations.csv` beside the DLL.
 
 ## 0.2.2
 
