@@ -137,9 +137,13 @@ namespace OdinsMissingPatch
                 UITooltip tooltip = elementRoot.GetComponent<UITooltip>();
                 if (tooltip != null)
                 {
-                    tooltip.m_text = Localization.instance.Localize(name) +
-                        "\nCarried: " + __state.Carried +
-                        "\n" + ChestColorTag + "Nearby chests: " + fromChests + "</color>";
+                    // The counts are put in here rather than left to the tooltip, which
+                    // translates what it is given but cannot fill in a $1.
+                    Localization localization = Localization.instance;
+                    tooltip.m_text = localization.Localize(name) +
+                        "\n" + localization.Localize("$omp_carried", __state.Carried.ToString()) +
+                        "\n" + ChestColorTag +
+                        localization.Localize("$omp_from_chests", fromChests.ToString()) + "</color>";
                 }
                 int need = req.GetAmount(quality) * craftMultiplier;
                 bool free = craft

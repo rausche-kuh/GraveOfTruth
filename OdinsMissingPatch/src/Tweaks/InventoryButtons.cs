@@ -76,6 +76,13 @@ namespace OdinsMissingPatch
 
             private static void Postfix(InventoryGui __instance)
             {
+                // The chest is already gone on the frame the screen starts fading, so stack
+                // nearby would come back into a column still standing beside an open chest
+                // panel - see PanelButtons.Closing.
+                if (PanelButtons.Closing(__instance))
+                {
+                    return;
+                }
                 if (!Instance.On)
                 {
                     Show(__instance, false);
@@ -106,11 +113,10 @@ namespace OdinsMissingPatch
                 {
                     return false;
                 }
-                stackNearby = PanelButtons.Create(gui, panel, "StackNearby", "stack_nearby", "Stack nearby",
-                    "Stacks your inventory into the chests around you that already hold each item.", StackNearby);
-                sort = PanelButtons.Create(gui, panel, "SortInventory", "sort", "Sort",
-                    "Merges your stacks and sorts the inventory by kind and name. What you have equipped, "
-                    + "your favourites and the hotbar stay.", SortInventory);
+                stackNearby = PanelButtons.Create(gui, panel, "StackNearby", "stack_nearby",
+                    "$omp_stack_nearby", "$omp_stack_nearby_tip", StackNearby);
+                sort = PanelButtons.Create(gui, panel, "SortInventory", "sort",
+                    "$omp_sort", "$omp_sort_tip", SortInventory);
                 if (stackNearby == null || sort == null)
                 {
                     if (stackNearby != null)

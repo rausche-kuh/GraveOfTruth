@@ -7,8 +7,13 @@
   Quick stack and Fill the chest's stacks then put it there even when the chest holds none of it,
   and quick stacking fills the chests marked for an item before the ones that only happen to hold
   one — so a chest emptied of its wood still draws the next load back.
+- Closing the inventory with a chest open no longer flashes the game's old Take all and Stack all
+  buttons over the chest panel, nor slides Stack nearby into the buttons beside your inventory,
+  while the screen fades out; every button now stays put until the panel is gone.
 - While a chest has any marks, a Clear favourites button appears in its panel next to the Nearby
   use switch: it counts them, lists them in its tooltip and clears them all in one click.
+- Every word the mod shows now follows the language Valheim is set to, and can be translated by
+  adding a column to `translations.csv` beside the DLL. English is what ships today.
 
 ## 0.2.2
 

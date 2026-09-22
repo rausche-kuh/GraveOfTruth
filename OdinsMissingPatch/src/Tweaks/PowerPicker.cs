@@ -168,7 +168,8 @@ namespace OdinsMissingPatch
         /// </summary>
         private sealed class PowerConfig : IRadialConfig
         {
-            public string LocalizedName => "Forsaken Powers";
+            /// <summary>Written straight onto the ring's label, so it is translated here.</summary>
+            public string LocalizedName => Localization.instance.Localize("$omp_forsaken_powers");
 
             /// <summary>
             /// The icon of the power you are carrying, so the top level ring already says which

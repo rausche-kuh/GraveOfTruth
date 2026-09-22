@@ -218,7 +218,11 @@ namespace OdinsMissingPatch
                 return "";
             }
             string alt = ZInput.IsNonClassicFunctionality() && ZInput.IsGamepadActive() ? "$KEY_AltKeys" : "$KEY_AltPlace";
-            return Localization.instance.Localize("\n[<color=yellow><b>" + alt + " + $KEY_Use</b></color>] Add all (" + Describe(plan) + ")");
+            // The list is translated first: what goes in as $1 is put there after the lookup,
+            // so an item name left in it would never be looked up itself.
+            string items = Localization.instance.Localize(Describe(plan));
+            return Localization.instance.Localize(
+                "\n[<color=yellow><b>" + alt + " + $KEY_Use</b></color>] $omp_add_all", items);
         }
 
         private static void Report(Humanoid user, List<Batch> plan)

@@ -99,7 +99,7 @@ namespace OdinsMissingPatch
             List<Container> chests = new List<Container>(NearbyChests.Find(player.transform.position, range.Value));
             if (chests.Count == 0)
             {
-                player.Message(MessageHud.MessageType.Center, "No chest in reach");
+                player.Message(MessageHud.MessageType.Center, "$omp_no_chest");
                 return;
             }
             Dictionary<Container, int> stashed = new Dictionary<Container, int>();
@@ -165,8 +165,10 @@ namespace OdinsMissingPatch
                 }
             }
             player.Message(MessageHud.MessageType.Center, moved > 0
-                ? "Stacked " + moved + " into " + stashed.Count + (stashed.Count == 1 ? " chest" : " chests")
-                : "Nothing to stack away");
+                ? Localization.instance.Localize(
+                    stashed.Count == 1 ? "$omp_stacked_one_chest" : "$omp_stacked_chests",
+                    moved.ToString(), stashed.Count.ToString())
+                : "$omp_stacked_none");
         }
 
         /// <summary>
@@ -276,13 +278,13 @@ namespace OdinsMissingPatch
                 Container chest = ChestFavorites.OpenChest(inventory);
                 if (chest == null)
                 {
-                    player.Message(MessageHud.MessageType.Center, "Favourites only in your inventory");
+                    player.Message(MessageHud.MessageType.Center, "$omp_favourites_inventory");
                     return false;
                 }
                 string name = item.m_shared.m_name;
                 bool marked = ChestFavorites.Toggle(chest, name);
-                player.Message(MessageHud.MessageType.Center, (marked
-                    ? "This chest now takes " : "This chest no longer takes ") + ChestFavorites.Localize(name));
+                player.Message(MessageHud.MessageType.Center, Localization.instance.Localize(
+                    marked ? "$omp_chest_takes" : "$omp_chest_takes_not", ChestFavorites.Localize(name)));
                 return false;
             }
         }

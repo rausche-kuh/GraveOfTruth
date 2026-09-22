@@ -82,6 +82,14 @@
   `RectTransform`, `m_container` the chest panel's. An item's slot is nothing but
   `m_gridPos`; the grid redraws from it on its next `UpdateGui`, so a sort is setting positions
   and one `Changed()`.
+- Closing the screen is not one clean frame: `InventoryGui.Hide` clears the animator's `visible`
+  flag and drops `m_currentContainer` together, but `Update` read that flag before the input that
+  closed it, so one more `UpdateContainer` and `UpdateInventory` run afterwards - with no chest,
+  the chest panel still active, and the fade still to play. Every postfix keyed on "a chest is
+  open" therefore has to ask `PanelButtons.Closing` first and leave its buttons untouched: without
+  it the game's Take all and Stack all come back over the panel and ours come off it, and stack
+  nearby (hidden while a chest is open) joins the inventory column and shifts the two above it,
+  all for the length of the fade.
 - The inventory screen's geometry (from the `_GameMain` prefab, see the workspace CLAUDE.md for
   how to read it): the `Player` panel is 570x287 (taller with more rows, `SetInventorySize`),
   its grid fills it to the edges, and the `Container` panel is a child of it, 570x340, hung
@@ -98,9 +106,12 @@
   (133x40) at the left, the name centred, Stack all at the right - there is no free width on
   it. All of this is anchored to a point, so a rect's centre from its parent's bottom left is
   `anchor * parentSize + anchoredPosition + (0.5 - pivot) * size`.
-- `UITooltip` (assembly_guiutils) shows nothing without an `m_tooltipPrefab`; the slot prefab
-  (`InventoryGrid.m_elementPrefab`, `InventoryElement.m_tooltip`) has one to borrow for a
-  button copied without a tooltip. `m_topic` is the header line, `m_text` the body.
+- `UITooltip` (assembly_guiutils) shows nothing without an `m_tooltipPrefab`, and the chest
+  panel's Take all button carries no `UITooltip` at all, so a button copied from it has no hover
+  text until one is added: `PanelButtons.Tooltip` adds the component and borrows the window from
+  the slot prefab (`InventoryGrid.m_elementPrefab`, `InventoryElement.m_tooltip`), and every
+  copied button - icon or text - goes through it. `m_topic` is the header line, `m_text` the
+  body; both are localized on hover, and the body may hold newlines.
 - `UnityEngine.ImageConversionModule`, where `Texture2D.LoadImage` lives, is built against
   netstandard 2.1 and cannot be referenced from a net472 build (CS1705); `PanelButtons.LoadPng`
   reaches `ImageConversion.LoadImage` by reflection instead. Everything else in `lib/` binds.

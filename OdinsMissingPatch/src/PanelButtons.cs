@@ -35,6 +35,11 @@ namespace OdinsMissingPatch
         /// A new button under <paramref name="parent"/>, inactive until its owner places it.
         /// Null when the panel has no Take all button to copy, in which case there is nothing to
         /// build a column from and the owner leaves the panel as it is.
+        /// <para>
+        /// <paramref name="title"/> and <paramref name="tooltip"/> are $omp_ tokens from
+        /// <see cref="Translations"/>: UITooltip localizes both when it shows the tooltip, so
+        /// they follow a language change without the button being rebuilt.
+        /// </para>
         /// </summary>
         internal static Button Create(InventoryGui gui, Transform parent, string name, string icon,
             string title, string tooltip, UnityAction onClick)
@@ -62,16 +67,7 @@ namespace OdinsMissingPatch
 
             AddIcon(go, icon, BlankLabel(go), size);
 
-            UITooltip tip = go.GetComponent<UITooltip>();
-            if (tip == null)
-            {
-                GameObject prefab = TooltipPrefab(gui);
-                if (prefab != null)
-                {
-                    tip = go.AddComponent<UITooltip>();
-                    tip.m_tooltipPrefab = prefab;
-                }
-            }
+            UITooltip tip = Tooltip(gui, go);
             if (tip != null)
             {
                 tip.m_topic = title;
@@ -79,6 +75,20 @@ namespace OdinsMissingPatch
             }
             go.SetActive(false);
             return button;
+        }
+
+        /// <summary>
+        /// Whether the screen is on its way out, in which case an owner leaves its buttons
+        /// exactly as they are. Closing the screen clears the animator's "visible" flag and
+        /// drops <c>m_currentContainer</c> in the same frame, while the chest panel stays up for
+        /// the fade - and one more UpdateContainer still runs on that frame, with the flag
+        /// already read. Reading it as "no chest open" would put the game's Take all and Stack
+        /// all back over the panel, and take our own buttons off it, for the whole fade.
+        /// </summary>
+        internal static bool Closing(InventoryGui gui)
+        {
+            Animator animator = gui != null ? gui.m_animator : null;
+            return animator != null && !animator.GetBool("visible");
         }
 
         // ---- Where things are ------------------------------------------------------------------
@@ -357,6 +367,32 @@ namespace OdinsMissingPatch
             image.preserveAspect = true;
             image.raycastTarget = false;
             image.enabled = image.sprite != null;
+        }
+
+        /// <summary>
+        /// The tooltip of a button copied from the chest panel, made if it has none: the vanilla
+        /// button carries no `UITooltip`, so every copy needs one added, and a `UITooltip` without
+        /// a window prefab shows nothing at all - both are borrowed from the inventory slots.
+        /// Null only when no window prefab was found anywhere, and then a caller has no tooltip.
+        /// </summary>
+        internal static UITooltip Tooltip(InventoryGui gui, GameObject go)
+        {
+            UITooltip tip = go.GetComponent<UITooltip>();
+            if (tip == null)
+            {
+                GameObject prefab = TooltipPrefab(gui);
+                if (prefab == null)
+                {
+                    return null;
+                }
+                tip = go.AddComponent<UITooltip>();
+                tip.m_tooltipPrefab = prefab;
+            }
+            else if (tip.m_tooltipPrefab == null)
+            {
+                tip.m_tooltipPrefab = TooltipPrefab(gui);
+            }
+            return tip;
         }
 
         /// <summary>

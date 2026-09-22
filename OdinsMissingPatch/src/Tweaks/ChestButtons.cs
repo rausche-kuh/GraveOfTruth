@@ -80,7 +80,7 @@ namespace OdinsMissingPatch
             }
             gui.SetupDragItem(null, null, 1);
             int moved = TopUp(player.GetInventory(), chest.GetInventory());
-            Report(gui, player, moved, "Took " + moved + " onto your stacks", "Nothing to take onto your stacks");
+            Report(gui, player, moved, "$omp_took", "$omp_took_none");
         }
 
         /// <summary>
@@ -150,8 +150,8 @@ namespace OdinsMissingPatch
                 return;
             }
             gui.SetupDragItem(null, null, 1);
-            int moved = Instance.MoveToChest(player, chest.GetInventory(), onlyExisting: true);
-            Report(gui, player, moved, "Stacked " + moved + " into the chest", "Nothing to stack into the chest");
+            int moved = Instance.MoveToChest(player, chest, onlyExisting: true);
+            Report(gui, player, moved, "$omp_stacked_chest", "$omp_stacked_chest_none");
         }
 
         private static void PlaceAll()
@@ -162,8 +162,8 @@ namespace OdinsMissingPatch
                 return;
             }
             gui.SetupDragItem(null, null, 1);
-            int moved = Instance.MoveToChest(player, chest.GetInventory(), onlyExisting: false);
-            Report(gui, player, moved, "Placed " + moved + " in the chest", "Nothing to place");
+            int moved = Instance.MoveToChest(player, chest, onlyExisting: false);
+            Report(gui, player, moved, "$omp_placed", "$omp_placed_none");
         }
 
         private static void SortChest()
@@ -177,25 +177,34 @@ namespace OdinsMissingPatch
             InventorySorter.Sort(chest.GetInventory(), 0, null);
         }
 
+        /// <summary>
+        /// The count goes into <paramref name="done"/> here, since the message hud localizes a
+        /// token but cannot fill in a $1; <paramref name="nothing"/> it translates by itself.
+        /// </summary>
         private static void Report(InventoryGui gui, Player player, int moved, string done, string nothing)
         {
             if (moved > 0)
             {
                 gui.m_moveItemEffects.Create(gui.transform.position, Quaternion.identity);
             }
-            player.Message(MessageHud.MessageType.Center, moved > 0 ? done : nothing);
+            player.Message(MessageHud.MessageType.Center, moved > 0
+                ? Localization.instance.Localize(done, moved.ToString())
+                : nothing);
         }
 
         /// <summary>
         /// Moves what the backpack may part with into the chest, stacks first and free slots
         /// after, and returns how many units went. With <paramref name="onlyExisting"/> only
-        /// items the chest already holds go, the game's own Stack all rule. Same add-and-remove
-        /// dance as quick stacking: the game's add either takes the whole stack, or merges what
-        /// fits and leaves the smaller stack ours.
+        /// items the chest already holds or has been marked for go, the game's own Stack all
+        /// rule plus the chest's favourites. Same add-and-remove dance as quick stacking: the
+        /// game's add either takes the whole stack, or merges what fits and leaves the smaller
+        /// stack ours.
         /// </summary>
-        private int MoveToChest(Player player, Inventory chest, bool onlyExisting)
+        private int MoveToChest(Player player, Container container, bool onlyExisting)
         {
             Inventory backpack = player.GetInventory();
+            Inventory chest = container.GetInventory();
+            string marks = ChestFavorites.Marks(container);
             int moved = 0;
             foreach (ItemDrop.ItemData item in new List<ItemDrop.ItemData>(backpack.GetAllItems()))
             {
@@ -204,7 +213,7 @@ namespace OdinsMissingPatch
                     continue;
                 }
                 string name = item.m_shared.m_name;
-                if (onlyExisting && !chest.ContainsItemByName(name))
+                if (onlyExisting && !chest.ContainsItemByName(name) && !ChestFavorites.Marked(marks, name))
                 {
                     continue;
                 }
@@ -259,6 +268,12 @@ namespace OdinsMissingPatch
 
             private static void Postfix(InventoryGui __instance)
             {
+                // The chest panel is still up while the screen fades out, so nothing moves until
+                // it is gone - see PanelButtons.Closing.
+                if (PanelButtons.Closing(__instance))
+                {
+                    return;
+                }
                 Container chest = __instance.m_currentContainer;
                 bool show = Instance.On && chest != null && __instance.m_container.gameObject.activeSelf;
                 if (!show)
@@ -318,16 +333,16 @@ namespace OdinsMissingPatch
                 {
                     return false;
                 }
-                Button fillInventory = PanelButtons.Create(gui, inventory, "FillInventory", "fill_inventory", "Fill your stacks",
-                    "Tops up the stacks you carry from the chest, as far as they hold. Nothing new is taken.", FillInventory);
-                Button takeAll = PanelButtons.Create(gui, chest, "TakeAll", "take_all", "Take all",
-                    "Everything in the chest goes into your inventory.", TakeAll);
-                Button placeAll = PanelButtons.Create(gui, chest, "PlaceAll", "place_all", "Place all",
-                    "Everything you carry goes into the chest. Worn gear, favourites and the hotbar stay.", PlaceAll);
-                Button fillChest = PanelButtons.Create(gui, chest, "FillChest", "fill_chest", "Fill the chest's stacks",
-                    "What you carry of the items in the chest goes in. Worn gear, favourites and the hotbar stay.", FillChest);
-                Button sortChest = PanelButtons.Create(gui, chest, "Sort", "sort", "Sort the chest",
-                    "Merges the chest's stacks and sorts it by kind and name.", SortChest);
+                Button fillInventory = PanelButtons.Create(gui, inventory, "FillInventory", "fill_inventory",
+                    "$omp_fill_inventory", "$omp_fill_inventory_tip", FillInventory);
+                Button takeAll = PanelButtons.Create(gui, chest, "TakeAll", "take_all",
+                    "$omp_take_all", "$omp_take_all_tip", TakeAll);
+                Button placeAll = PanelButtons.Create(gui, chest, "PlaceAll", "place_all",
+                    "$omp_place_all", "$omp_place_all_tip", PlaceAll);
+                Button fillChest = PanelButtons.Create(gui, chest, "FillChest", "fill_chest",
+                    "$omp_fill_chest", "$omp_fill_chest_tip", FillChest);
+                Button sortChest = PanelButtons.Create(gui, chest, "Sort", "sort",
+                    "$omp_sort_chest", "$omp_sort_chest_tip", SortChest);
                 Button[] made = { fillInventory, takeAll, placeAll, fillChest, sortChest };
                 foreach (Button button in made)
                 {

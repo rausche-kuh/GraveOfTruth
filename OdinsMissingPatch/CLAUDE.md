@@ -19,7 +19,9 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | `src/PanelButtons.cs` | Icon buttons for the inventory screen, cut from the chest panel's Take all button, and where a column beside a panel is. Used by ChestButtons, InventoryButtons and the chest panel's text buttons. |
 | `src/InventorySorter.cs` | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps. |
 | `src/MaterialOrder.cs` | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies. |
+| `src/Translations.cs` | Hands `assets/translations.csv` to the game's localization on every language setup. |
 | `assets/icons/` | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. |
+| `assets/translations.csv` | Every word the mod shows, one row per `$omp_` token, one column per language. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
 ## The rules that always apply
@@ -33,6 +35,9 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
   its multipliers) each time it runs. That is what makes the switches work without a restart; never
   make patching itself conditional.
 - Null-guard everything: `Player.m_localPlayer` is frequently null.
+- Nothing the player reads is a literal in the code: a call site passes a `$omp_` token and
+  `assets/translations.csv` holds the words. Config descriptions are the exception and stay
+  English — see [`docs/translations.md`](docs/translations.md).
 - Read the doc for the area before changing it — each one holds both the conventions that area
   follows and the game facts they were derived from, so it is where a change is checked and where
   what a change taught goes back.
@@ -45,6 +50,7 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | looking up what a tweak does | [`docs/tweaks.md`](docs/tweaks.md) — one entry per tweak, defaults and scope |
 | anything reaching into chests | [`docs/chests.md`](docs/chests.md) — the reach, `Claim`, container ZDOs, requirement checks, refuelling, the two favourites |
 | anything drawn in the inventory screen | [`docs/inventory-ui.md`](docs/inventory-ui.md) — panel buttons, panel geometry, `InventoryGui`, the sorter |
+| any word a player reads | [`docs/translations.md`](docs/translations.md) — the tokens, the CSV, what translates itself and what does not |
 | sorting or classifying items | [`docs/item-order.md`](docs/item-order.md) — `MaterialOrder`, the `ObjectDB` crafting tree |
 | stations, fires, demisters, repairing | [`docs/building-and-world.md`](docs/building-and-world.md) |
 | stamina costs and what counts as hostile | [`docs/stamina.md`](docs/stamina.md) |

@@ -1,0 +1,63 @@
+key,English
+// Every word the mod puts on screen. One column per language, English first: a cell left empty
+// falls back to English, and a language without a column falls back to English as a whole, so a
+// new language is a new column here and nothing else. $1 and $2 are filled in by the game - a
+// count or an item name - and may stand anywhere in the sentence. A row starting with // is a
+// comment. Keep commas inside "quotes", and write "" for a quote inside a value.
+//
+// The chest panel's buttons
+omp_take_all,Take all
+omp_take_all_tip,Everything in the chest goes into your inventory.
+omp_place_all,Place all
+omp_place_all_tip,"Everything you carry goes into the chest. Worn gear, favourites and the hotbar stay."
+omp_fill_chest,Fill the chest's stacks
+omp_fill_chest_tip,"What you carry of the items in the chest goes in. Worn gear, favourites and the hotbar stay."
+omp_sort_chest,Sort the chest
+omp_sort_chest_tip,Merges the chest's stacks and sorts it by kind and name.
+omp_fill_inventory,Fill your stacks
+omp_fill_inventory_tip,"Tops up the stacks you carry from the chest, as far as they hold. Nothing new is taken."
+omp_took,Took $1 onto your stacks
+omp_took_none,Nothing to take onto your stacks
+omp_stacked_chest,Stacked $1 into the chest
+omp_stacked_chest_none,Nothing to stack into the chest
+omp_placed,Placed $1 in the chest
+omp_placed_none,Nothing to place
+//
+// The inventory panel's buttons
+omp_stack_nearby,Stack nearby
+omp_stack_nearby_tip,Stacks your inventory into the chests around you that already hold each item.
+omp_sort,Sort
+omp_sort_tip,"Merges your stacks and sorts the inventory by kind and name. What you have equipped, your favourites and the hotbar stay."
+//
+// Quick stacking
+omp_no_chest,No chest in reach
+omp_stacked_one_chest,Stacked $1 into one chest
+omp_stacked_chests,Stacked $1 into $2 chests
+omp_stacked_none,Nothing to stack away
+omp_favourites_inventory,Favourites only in your inventory
+omp_chest_takes,This chest now takes $1
+omp_chest_takes_not,This chest no longer takes $1
+//
+// Whether a chest may be reached into
+omp_nearby_on,Nearby use: on
+omp_nearby_off,Nearby use: off
+omp_nearby_topic,Nearby use
+omp_nearby_tip,"Whether crafting, quick stacking and refuelling may reach into this chest"
+//
+// The kinds of item a chest is marked to take
+omp_clear_favourite,Clear 1 favourite
+omp_clear_favourites,Clear $1 favourites
+omp_favourites_topic,The chest's favourites
+omp_favourites_tip_head,This chest takes these even while it holds none:
+omp_favourites_tip_foot,Alt-click an item in the chest to mark its kind; this button clears every mark at once.
+omp_favourites_cleared,The chest's favourites are cleared
+//
+// Adding fuel and materials by hand
+omp_add_all,Add all ($1)
+//
+// The forsaken powers picker
+omp_forsaken_powers,Forsaken Powers
+//
+// What a crafting requirement's hover text says about the chests around you
+omp_carried,Carried: $1
+omp_from_chests,Nearby chests: $1
