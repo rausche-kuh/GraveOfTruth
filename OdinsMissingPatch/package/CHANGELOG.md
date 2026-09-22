@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Pocket upgrades: Haldor now offers Wider Pockets, the first extra inventory row, once the Elder
+  has fallen instead of Moder — the row arrives while your backpack is still what is slowing you
+  down. Deeper Pockets still waits for the Queen. Both are still bought from Haldor at his own
+  price, and a setting picks the boss each one waits for, up to none at all.
 - A chest can now be made the home of a kind of item: Alt-click an item inside an open chest, the
   same click that makes a favourite in your own inventory, and the chest is marked for that kind.
   Quick stack and Fill the chest's stacks then put it there even when the chest holds none of it,

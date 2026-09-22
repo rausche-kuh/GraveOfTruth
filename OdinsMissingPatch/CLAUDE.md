@@ -3,7 +3,7 @@
 A collection of quality of life changes, each one its own configurable tweak. See the root
 `CLAUDE.md` for the shared build, the scripts and the environment.
 
-Twenty tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
+Twenty-one tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
 (client side, world state, character) and which deep note covers it. Most are client side: the
 chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the character.
 
@@ -58,4 +58,5 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | portals and the death path                 | [`docs/death-and-portals.md`](docs/death-and-portals.md)                                                                    |
 | the radial menu and guardian powers        | [`docs/radial-menu.md`](docs/radial-menu.md)                                                                                |
 | equipping, the hotbar, the equip queue     | [`docs/equipping.md`](docs/equipping.md)                                                                                    |
+| the trader's shelf and inventory rows      | [`docs/trader.md`](docs/trader.md) — the `Trader` shelf, how a gate is moved, the two pocket upgrades, `invrows` |
 | touching ground another mod already covers | [`docs/references.md`](docs/references.md) — the reference checkouts, what each solves and how this mod differs             |

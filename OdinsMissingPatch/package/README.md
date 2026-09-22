@@ -14,6 +14,9 @@ because I want them, not because I can argue they are neutral:
 - **Keep gear on death** removes the stakes of dying on a world already set to the Casual death
   penalty. The corpse run is a real punishment, but not one I have the time for.
 - **Endless fuel** deletes the coal-and-wood upkeep of a lit base. Small, but it is an economy.
+- **Pocket upgrades** hands you Haldor's first extra inventory row two bosses early. It is a
+  progression change, not a QoL one: the cramped backpack of the Swamp and the Mountains is meant
+  to be part of the game, and I would rather spend those hours on the game's other ideas.
 
 ## What it does
 
@@ -91,6 +94,12 @@ because I want them, not because I can argue they are neutral:
   shield or a torch you are already holding stays. It picks the shield you marked as a favourite
   first, then one on your hotbar, then the rest of your backpack, and raises it the way you would
   have, taking its usual moment.
+- **Pocket upgrades** — Haldor sells the two extra inventory rows, **Wider Pockets** and **Deeper
+  Pockets**, once the boss you choose has fallen in that world. Wider Pockets waits for the Elder
+  instead of Moder by default, so the first extra row arrives while a full backpack is still the
+  thing slowing you down; Deeper Pockets keeps the Queen. You still buy them from Haldor, at his
+  price, once per character. Either can be set to any boss, or to none at all to have it on the
+  shelf from the start.
 
 ## Configuration
 

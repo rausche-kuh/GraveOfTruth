@@ -39,6 +39,7 @@ namespace OdinsMissingPatch
             PowerPicker.Instance,
             EquipWhileRunning.Instance,
             AutoShield.Instance,
+            PocketUpgrades.Instance,
         };
 
         void Awake()

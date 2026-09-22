@@ -30,6 +30,7 @@ player's own save).
 | PowerPicker | character | [radial-menu](radial-menu.md) |
 | EquipWhileRunning | client | [equipping](equipping.md) |
 | AutoShield | client | [equipping](equipping.md) |
+| PocketUpgrades | client | [trader](trader.md) |
 
 ## Shipped (0.1.0)
 
@@ -117,5 +118,11 @@ player's own save).
   survives the weapon and is left alone. The shield is picked favourites first, then the hotbar row,
   then the rest of the backpack, first slot within each, and is equipped through `ToggleEquipped`
   so it takes its own duration and can be interrupted like any equip.
+- **Pocket upgrades** — which boss each of Haldor's two extra inventory rows waits for is a
+  setting: Wider Pockets, `defeated_dragon` (Moder) in vanilla, is offered once the Elder has
+  fallen by default, and Deeper Pockets keeps the Queen. Only the gate moves — the upgrades are
+  still bought from Haldor at their own price, once per character, for one row each. The item's own
+  `m_requiredGlobalKey` is rewritten from the vanilla one kept aside per item, in a prefix on
+  `Trader.GetAvailableItems`, so the game's own filter still asks the question.
 
 Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel.
