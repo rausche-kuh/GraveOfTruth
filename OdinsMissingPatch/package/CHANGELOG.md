@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.2
 
 - Auto shield: drawing a one handed weapon now raises a shield with it, if your off hand is empty
   and you carry one. A shield or torch already in your hand stays, and the shield is chosen from
