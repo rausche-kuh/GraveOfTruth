@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.1
 
 - Equip while running: pressing a hotbar key while sprinting now equips or unequips the weapon,
   shield or armour without you having to slow down. It still takes the usual moment, an

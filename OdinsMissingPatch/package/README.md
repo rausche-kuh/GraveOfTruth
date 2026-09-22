@@ -132,3 +132,27 @@ on its own or want it server-enforced. **Do not run both of a pair.**
   [SmartCraft-Storage](https://thunderstore.io/c/valheim/p/Zellds/SmartCraftStorage/), which goes
   much further — stations that feed themselves, restocking, animal feeding. This one keeps every
   move yours.
+- Equip while running is what blacks7ar's
+  [EquipGearWhileRunning](https://thunderstore.io/c/valheim/p/blacks7ar/EquipGearWhileRunning/) got
+  to first, and that one is a drop-in with nothing to configure; here it is a switch beside the
+  rest.
+
+## Recommendations
+
+Mods I run beside this one. None of them overlap it — they fill the gaps this one leaves.
+
+- [Unshamed](https://valheim.hexium.gg/mods/Azumatt/Unshamed) — gives you back the achievements
+  Valheim switches off the moment it sees a mod. It unlocks nothing you have not earned, and it
+  can backfill the progress your modded hours already made.
+- [Discovery Pins](https://thunderstore.io/c/valheim/p/Searica/DiscoveryPins/) — pins what you find
+  on the map by itself: dungeons, ore, portals, and it clears the death pin when you pick your
+  grave back up. A key mass-pins everything nearby.
+- [HUD Compass](https://thunderstore.io/c/valheim/p/Neobotics/HUDCompass/) — a compass across the
+  top of the screen, carrying live markers for your ships, carts and portals so you can find where
+  you left them.
+- [Target Portal](https://valheim.hexium.gg/mods/Smoothbrain/TargetPortal) — pick the portal you
+  are travelling to off a map instead of juggling tag pairs, with per-portal access rules and
+  favourites. This one wants to be on the server too.
+- [Plant Everything](https://thunderstore.io/c/valheim/p/Advize/PlantEverything/) — berry bushes,
+  mushrooms, flowers and every kind of tree on the cultivator, with growth timers on the plants and
+  a setting for each one.
