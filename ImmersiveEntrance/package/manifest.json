@@ -1,0 +1,9 @@
+{
+    "name": "ImmersiveEntrance",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
+    "description": "Dungeon entrances are no longer black: look through the door and see the dungeon behind it.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}

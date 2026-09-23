@@ -1,0 +1,2 @@
+- Invested mines: camera renders infront of fog
+- Winding Tunnels: placement is completly off, as the entrance is flat on the flow
