@@ -76,8 +76,13 @@ opened or is shut again, so closing it right after the kick is at normal speed.
   rather than a boot. Resolution tries `ZNetScene.GetPrefab` first and falls back to a single
   `Resources.FindObjectsOfTypeAll<GameObject>()` sweep for *all* remaining names at once, because
   only effects carrying a `ZNetView` are in `ZNetScene` — `sfx_battering_ram_impact` and
-  `fx_hit_camshake` are not. The sweep only takes root objects, because a child inside some
-  other prefab can share an effect's name. `RPC_Kick` starts the swing before the bang, so an
+  `fx_hit_camshake` are not. The sweep prefers root objects, because a child inside some
+  other prefab can share an effect's name, and only falls back to a child (of a prefab asset,
+  `!scene.IsValid()`, never of a world instance) when no root exists. That fallback is what finds
+  `sfx_battering_ram_impact`: its standalone prefab sits in bundle `c4210710` but nothing
+  hard-references it, so it is never loaded; the ram's `m_punchEffect` is `fx_batteringram_fire`
+  (smoke, spikes, shockwave, flame spikes) with the sound as a child, and instantiating that child
+  gives the sound alone. `RPC_Kick` starts the swing before the bang, so an
   effect that throws cannot leave the door at normal speed.
 - Effects without a `TimedDestruction` get `Destroy(go, EffectLifetime)` put on them. Most of the
   game's effects clean themselves up; a bare `ZSFX` that normally lives as a child of some machine

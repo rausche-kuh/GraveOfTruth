@@ -510,25 +510,46 @@ namespace ThisIsValheim
             // Only the effects that carry a ZNetView are in ZNetScene; the rest live wherever the
             // prefab that uses them loaded them, so they have to be searched for. That is a walk
             // over every object Unity has in memory, which is why it happens once, for all of them
-            // at once, and only for the names that were not found the cheap way. Only roots count:
-            // a child of some other prefab can carry the same name and is not an effect of its own.
+            // at once, and only for the names that were not found the cheap way. A root wins; a
+            // child of the same name is only kept in reserve, because some effects are never
+            // loaded loose at all - sfx_battering_ram_impact is its own prefab in the game's
+            // bundles, but the ram only references fx_batteringram_fire, which carries the sound
+            // as a child, so that child is the only copy ever in memory. Instantiating a child
+            // clones it as a root of its own, without the smoke and flames of its parent.
             if (missing.Count > 0)
             {
+                Dictionary<string, GameObject> children = new Dictionary<string, GameObject>();
                 foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
                 {
-                    if (go.transform.parent != null)
+                    int at = missing.IndexOf(go.name);
+                    if (at < 0)
                     {
                         continue;
                     }
-                    int at = missing.IndexOf(go.name);
-                    if (at >= 0)
+                    if (go.transform.parent != null)
                     {
-                        found.Add(new EffectList.EffectData { m_prefab = go, m_enabled = true });
-                        missing.RemoveAt(at);
-                        if (missing.Count == 0)
+                        // Only a prefab's own child, not one inside a ram standing in the world,
+                        // which would take the effect with it when it is torn down.
+                        if (!go.scene.IsValid() && !children.ContainsKey(go.name))
                         {
-                            break;
+                            children.Add(go.name, go);
                         }
+                        continue;
+                    }
+                    found.Add(new EffectList.EffectData { m_prefab = go, m_enabled = true });
+                    missing.RemoveAt(at);
+                    if (missing.Count == 0)
+                    {
+                        break;
+                    }
+                }
+                for (int i = missing.Count - 1; i >= 0; i--)
+                {
+                    GameObject child;
+                    if (children.TryGetValue(missing[i], out child))
+                    {
+                        found.Add(new EffectList.EffectData { m_prefab = child, m_enabled = true });
+                        missing.RemoveAt(i);
                     }
                 }
             }
