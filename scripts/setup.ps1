@@ -87,6 +87,8 @@ New-Item -ItemType Directory $lib | Out-Null
 Copy-Item (Join-Path $managed 'assembly_*.dll') $lib
 Copy-Item (Join-Path $managed 'Assembly-CSharp.dll') $lib
 Copy-Item (Join-Path $managed 'UnityEngine*.dll') $lib
+# Splatform holds PlatformUserID, which Minimap.PinData and AddPin take.
+Copy-Item (Join-Path $managed 'Splatform*.dll') $lib
 foreach ($dll in 'BepInEx.dll', '0Harmony.dll', 'BepInEx.Harmony.dll') {
     $src = Join-Path $core $dll
     if (Test-Path $src) { Copy-Item $src $lib }

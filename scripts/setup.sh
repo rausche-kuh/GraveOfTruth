@@ -136,6 +136,8 @@ mkdir -p "$lib"
 cp "$managed"/assembly_*.dll "$lib"
 cp "$managed/Assembly-CSharp.dll" "$lib"
 cp "$managed"/UnityEngine*.dll "$lib"
+# Splatform holds PlatformUserID, which Minimap.PinData and AddPin take.
+cp "$managed"/Splatform*.dll "$lib"
 for dll in BepInEx.dll 0Harmony.dll BepInEx.Harmony.dll; do
     [ -f "$core/$dll" ] && cp "$core/$dll" "$lib" || true
 done

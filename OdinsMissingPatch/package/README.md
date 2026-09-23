@@ -79,13 +79,9 @@ because I want them, not because I can argue they are neutral:
   and its map onto yours, silently, with no click. Again when a pin of yours changes nearby or
   someone else has written to it, never more than every ten seconds.
 - **Auto pins** — dungeon and cave entrances, ore deposits you strike (not tin, which is
-  everywhere; soft tissue from the Mistlands giants counts) and places (fuling villages and other ruined settlements, tar pits, dragon eggs,
-  Dvergr excavations and watchtowers, ...) get an ordinary map pin when you come within
-  40m. It works out what counts from the game's own data, so a new biome needs no update. The pins belong to nobody: a map table shares each
-  one exactly once, the large map's shared-map button hides them all, a first click ticks one off,
-  and a right click removes it for good. A mined-out deposit's pin is crossed off when you pass it
-  (or removed, if you prefer). Nothing is pinned within 10m of a pin you already have, so maps
-  from another pin mod are not doubled up.
+  everywhere; soft tissue from the Mistlands giants counts) and places (fuling villages and
+  other ruined settlements, tar pits, dragon eggs, Dvergr excavations and watchtowers, ...)
+  get an ordinary map pin when you come within 40m.
 - **Pin looks** — those pins are coloured by their biome, and ore and place pins hide when the
   large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
   other players", show or hide dungeon, ore and place pins.

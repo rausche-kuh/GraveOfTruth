@@ -5,6 +5,7 @@
 | [GraveOfTruth](GraveOfTruth/)           | Dying calls down the obliterator's lightning on your grave and plays a loser jingle out of it, echo, thunderstorm and all.                   |
 | [OdinsMissingPatch](OdinsMissingPatch/) | Small quality of life changes, each one configurable: wider crafting station, comfort and mist clearing ranges, fires that never go out, stamina that only drains in combat. |
 | [ThisIsValheim](ThisIsValheim/)         | Doors are kicked open, not opened — the game's own bare handed kick bursts a door open four times faster than it should, with a battering ram's impact in its face. |
+| [ImmersiveEntrance](ImmersiveEntrance/) | Dungeon entrances are no longer a black wall: the doorway shows the dungeon behind it, torches lit. Proof of concept. |
 
 ## Quick start
 
@@ -24,6 +25,7 @@ GraveOfTruth/          one mod: <Name>/<Name>.csproj, src/, assets/, package/, R
   package/             manifest.json, icon.png, the Thunderstore page README.md and CHANGELOG.md
 OdinsMissingPatch/     the same shape, minus assets/
 ThisIsValheim/         the same shape, minus assets/
+ImmersiveEntrance/     the same shape, minus assets/
 scripts/               setup, deploy, bump, package, decompile, clean (.sh and .ps1)
 Directory.Build.props  the build every mod shares
 lib/                   game + BepInEx reference assemblies   (generated, gitignored)
