@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.1
+
+- Kicking a warded or locked door no longer does nothing: it rattles, tells you why it won't
+  open, and throws you back a step.
+- Looking at a door you could kick open with your hands empty now shows the kick button. Switch
+  it off with `ShowHint` if you would rather find out the hard way.
+- Changing the effect list in-game now takes effect on the next kick instead of after a restart.
+
 ## 0.1.0
 
 - Doors can be kicked open. Put your weapon away and kick one — the game's own bare handed

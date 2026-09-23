@@ -9,6 +9,11 @@ splintering wood and a puff of sawdust go off at the door. The kick is broadcast
 client; the door itself is opened through the game's own `UseDoor` RPC, so the server and unmodded
 clients see an ordinary door swing.
 
+**Unreleased:** a warded or key-locked door that refuses the kick plays its own `m_lockedEffects`,
+shows the game's `$msg_door_needkey` / `$piece_noaccess` and staggers the kicker; a bare handed
+player looking at a door the kick would open gets a `$KEY_SecondaryAttack` "Kick" line in the
+hover text (`ShowHint`).
+
 | Path | What |
 | --- | --- |
 | `src/ThisIsValheim.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
@@ -24,18 +29,33 @@ clients see an ordinary door swing.
   Mistlands gates) still register. The attack is identified by `m_attackAnimation` containing
   "kick", so a punch or a sword never counts and another mod's kick would.
 - **`Door.Open` asks nothing.** `RPC_UseDoor` flips the state for whoever sends it — no key check,
-  no ward check, no hover range — so every one of those is `TryKick`'s job. `Door.CanInteract()`
+  no ward check, no hover range — so every one of those is `Check`'s job. `Door.CanInteract()`
   is the game's own "is it standing still and openable", and `ZDOVars.s_state != 0` is "already
   open"; both are needed. `IncrementPlayerStat(PlayerStatType.DoorsOpened)` is here too, because
   `Door.Interact` — the only thing that normally counts a door — never runs.
+- `Check` returns a `Refusal`: `Busy` (open, swinging, not loaded) is silent; `Ward` and `Key`
+  go to `Rebuff`, which plays the door's `m_lockedEffects`, puts the game's own reason on screen
+  and calls `Player.Stagger(away)`. `RPC_Stagger` turns the character to face `-forceDirection`,
+  so passing the door→player direction keeps the kicker facing the door as they reel back. The
+  cooldown is set before the rebuff too, so several rays of one kick stagger once.
+- A key door only refuses a kicker without the key (`Door.HaveKey`, world level matched like
+  vanilla). With the key, `TryKick` does what `Door.Interact` does: `$msg_door_usingkey`, and the
+  key removed when `m_consumeKey`. With `LockedDoors` on, the lock is ignored and no key is spent.
+- The hover hint is a `Door.GetHoverText` postfix that appends
+  `[$KEY_SecondaryAttack] Kick` only when `Check` is `None` and `GetCurrentWeapon()` is the
+  unarmed weapon. `Localization.Translate` turns `KEY_<name>` into the bound key, and into the
+  `Joy<name>` binding when a gamepad is active. "Kick" is literal English, as the game's own
+  "Change pose" on the armor stand is.
 - The ward is checked but deliberately **not** flashed (`PrivateArea.CheckAccess(..., flash: false)`).
   The kick that got us here is a hit like any other, and `WearNTear.RPC_Damage` already calls
   `PrivateArea.OnObjectDamaged` for it; flashing again would flash twice for one kick.
 - One swing sweeps several rays and can land on the same door more than once, and the door's state
   takes a round trip to its owner before it changes, so a second hit would read the door as still
   shut and slam it closed again. `KickCooldown` (0.6s, per door in `kicked`) is what stops that;
-  the dictionary prunes itself once it grows past a handful of doors.
-- The bang is a list of the game's own effect prefabs, named in the config and resolved once:
+  the dictionary is cleared once it grows past eight doors, since by then all but the newest are
+  long out of cooldown.
+- The bang is a list of the game's own effect prefabs, named in the config and resolved in a
+  `ZNetScene.Awake` postfix (behind the loading screen) and again on `SettingChanged`:
   `sfx_battering_ram_impact` (the Ashlands siege ram's piston landing on a gate),
   `sfx_wood_break`, `vfx_SawDust` and `fx_hit_camshake`. `fx_GP_Activation`, the Forsaken power
   activation, is still a valid name for anyone who wants it — its audio is
@@ -43,7 +63,9 @@ clients see an ordinary door swing.
   rather than a boot. Resolution tries `ZNetScene.GetPrefab` first and falls back to a single
   `Resources.FindObjectsOfTypeAll<GameObject>()` sweep for *all* remaining names at once, because
   only effects carrying a `ZNetView` are in `ZNetScene` — `sfx_battering_ram_impact` and
-  `fx_hit_camshake` are not.
+  `fx_hit_camshake` are not. The sweep only takes root objects, because a child inside some
+  other prefab can share an effect's name. `RPC_Kick` starts the swing before the bang, so an
+  effect that throws cannot leave the door at normal speed.
 - Effects without a `TimedDestruction` get `Destroy(go, EffectLifetime)` put on them. Most of the
   game's effects clean themselves up; a bare `ZSFX` that normally lives as a child of some machine
   does not, and spawned loose it would sit at the door forever.

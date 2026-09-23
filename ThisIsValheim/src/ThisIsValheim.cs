@@ -24,7 +24,7 @@ namespace ThisIsValheim
     {
         public const string GUID = "rauschekuh.thisisvalheim";
         public const string NAME = "This Is Valheim!";
-        public const string VERSION = "0.1.0";
+        public const string VERSION = "0.1.1";
 
         /// <summary>Broadcast to every modded client: the bang and the fast swing, per door.</summary>
         private const string KickRpc = "ThisIsValheim_Kick";
@@ -62,12 +62,14 @@ namespace ThisIsValheim
         private const string DefaultEffects =
             "sfx_battering_ram_impact,sfx_wood_break,vfx_SawDust,fx_hit_camshake";
 
+        /// <summary>The line the door's hover text gains while a kick would open it.</summary>
+        private const string KickHint = "\n[<color=yellow><b>$KEY_SecondaryAttack</b></color>] Kick";
+
         private static ThisIsValheimPlugin instance;
         private static ZRoutedRpc registeredOn;
 
-        /// <summary>The configured effects, resolved once and reused.</summary>
+        /// <summary>The configured effects, resolved on every world load and on every config change.</summary>
         private static EffectList effects;
-        private static bool resolved;
 
         /// <summary>One running swing per door, so a second kick does not cut the first one short.</summary>
         private static readonly Dictionary<Door, Coroutine> swinging = new Dictionary<Door, Coroutine>();
@@ -79,7 +81,11 @@ namespace ThisIsValheim
 
         private static ConfigEntry<float> swingSpeed;
         private static ConfigEntry<bool> lockedDoors;
+        private static ConfigEntry<bool> showHint;
         private static ConfigEntry<string> effectPrefabs;
+
+        /// <summary>Why a kick does not open a door. Only a ward or a lock throws the kicker back.</summary>
+        private enum Refusal { None, Busy, Ward, Key }
 
         void Awake()
         {
@@ -90,13 +96,30 @@ namespace ThisIsValheim
                 new AcceptableValueRange<float>(1f, 10f)));
             lockedDoors = Config.Bind("Kick", "LockedDoors", false,
                 "Whether a door that wants a key can be kicked open without it. Off keeps the " +
-                "crypts shut until you have found the key, the way the game intends.");
+                "crypts shut until you have found the key, the way the game intends - carry the " +
+                "key and the kick opens the door with it.");
+            showHint = Config.Bind("Kick", "ShowHint", true,
+                "Whether a door you could kick open says so when you look at it bare handed.");
             effectPrefabs = Config.Bind("Effects", "Prefabs", DefaultEffects,
                 "The game's own effect prefabs that go off at the door, by name, separated by " +
                 "commas. Drop one to lose that layer, or put fx_GP_Activation in for the sound a " +
                 "Forsaken power makes when you call on it. An empty list makes the kick silent.");
+            effectPrefabs.SettingChanged += (sender, args) => ResolveEffects();
 
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), GUID);
+        }
+
+        /// <summary>
+        /// Looks the effects up while the world is still loading, rather than in the middle of the
+        /// first kick - the fallback search walks every object Unity has in memory.
+        /// </summary>
+        [HarmonyPatch(typeof(ZNetScene), "Awake")]
+        private static class ResolveOnLoad
+        {
+            private static void Postfix()
+            {
+                ResolveEffects();
+            }
         }
 
         /// <summary>ZNet builds a fresh ZRoutedRpc per session, so re-register once per game.</summary>
@@ -163,87 +186,136 @@ namespace ThisIsValheim
         // ---- The kick ------------------------------------------------------------------------
 
         /// <summary>
-        /// Boots the door open, or says it could not. Every reason the game would have refused the
-        /// door is checked here too, because the kick opens it through <c>Door.Open</c> directly
-        /// and that call asks nothing: UseDoor flips the state for whoever sends it, key or no key.
+        /// Every reason the game would have refused the door, asked again, because the kick opens
+        /// it through <c>Door.Open</c> directly and that call asks nothing: UseDoor flips the state
+        /// for whoever sends it, key or no key.
         /// </summary>
-        private static bool TryKick(Door door, Player player)
+        private static Refusal Check(Door door, Player player)
         {
             ZNetView nview = door.m_nview;
-            if (nview == null || !nview.IsValid() || door.m_animator == null || Recent(door))
-            {
-                return false;
-            }
             // Only a shut door gets kicked. A door standing open is closed the ordinary way, and
             // one still swinging is left to finish - CanInteract is the game's own version of that.
-            if (nview.GetZDO().GetInt(ZDOVars.s_state) != 0 || !door.CanInteract())
+            if (nview == null || !nview.IsValid() || door.m_animator == null
+                || nview.GetZDO().GetInt(ZDOVars.s_state) != 0 || !door.CanInteract())
             {
-                return false;
+                return Refusal.Busy;
             }
             // A ward is a ward, and no kick is hard enough. It is not flashed here: the kick that
             // got us this far is a hit like any other, and the game flashes the ward for that.
             if (door.m_checkGuardStone
                 && !PrivateArea.CheckAccess(door.transform.position, 0f, flash: false))
             {
-                return false;
+                return Refusal.Ward;
             }
-            if (door.m_keyItem != null && !lockedDoors.Value)
+            // A kicker with the key gets in the way a hand on the handle would, key and all.
+            if (NeedsKey(door) && !door.HaveKey(player))
             {
-                return false;
+                return Refusal.Key;
             }
+            return Refusal.None;
+        }
 
+        /// <summary>Whether the kick has to go through this door's lock, see <c>LockedDoors</c>.</summary>
+        private static bool NeedsKey(Door door)
+        {
+            return door.m_keyItem != null && !lockedDoors.Value;
+        }
+
+        /// <summary>Boots the door open, or bounces the kicker off one that will not give.</summary>
+        private static void TryKick(Door door, Player player)
+        {
+            if (Recent(door))
+            {
+                return;
+            }
+            Refusal refusal = Check(door, player);
+            if (refusal == Refusal.Busy)
+            {
+                return;
+            }
             kicked[door] = Time.time;
+            Vector3 away = (player.transform.position - door.transform.position).normalized;
+            if (refusal != Refusal.None)
+            {
+                Rebuff(door, player, away, refusal);
+                return;
+            }
+            // The key is used the way Door.Interact uses it: named on screen, and gone if the
+            // door eats its key. With LockedDoors on the kick needed no key, so none is spent.
+            if (NeedsKey(door))
+            {
+                string key = door.m_keyItem.m_itemData.m_shared.m_name;
+                if (door.m_consumeKey)
+                {
+                    player.GetInventory().RemoveItem(key, 1);
+                }
+                player.Message(MessageHud.MessageType.Center,
+                    Localization.instance.Localize("$msg_door_usingkey", key));
+            }
             // The show is everyone's; the door itself is opened by the game, through its own RPC,
             // so a client without the mod still sees it swing - just quietly and at walking pace.
-            Broadcast(nview.GetZDO().m_uid);
-            door.Open((player.transform.position - door.transform.position).normalized);
+            // Everybody includes us, and InvokeRoutedRPC runs it here and now, so the bang lands
+            // on the kicker's own screen in the same frame as the kick.
+            if (ZRoutedRpc.instance != null)
+            {
+                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, KickRpc, door.m_nview.GetZDO().m_uid);
+            }
+            door.Open(away);
             if (Game.instance != null)
             {
                 Game.instance.IncrementPlayerStat(PlayerStatType.DoorsOpened);
             }
-            return true;
+        }
+
+        /// <summary>
+        /// A warded or locked door does not move, the kicker does: the game's own locked rattle,
+        /// the game's own reason on screen, and a stagger back from the door. The stagger faces
+        /// the kicker at the door and rides the player's own sync, so everyone sees it.
+        /// </summary>
+        private static void Rebuff(Door door, Player player, Vector3 away, Refusal refusal)
+        {
+            door.m_lockedEffects.Create(door.transform.position, door.transform.rotation);
+            player.Message(MessageHud.MessageType.Center, refusal == Refusal.Key
+                ? Localization.instance.Localize("$msg_door_needkey", door.m_keyItem.m_itemData.m_shared.m_name)
+                : Localization.instance.Localize("$piece_noaccess"));
+            player.Stagger(away);
         }
 
         /// <summary>Whether this door has been kicked too recently to be kicked again.</summary>
         private static bool Recent(Door door)
         {
-            float now = Time.time;
             float when;
-            if (kicked.TryGetValue(door, out when) && now - when < KickCooldown)
+            if (kicked.TryGetValue(door, out when) && Time.time - when < KickCooldown)
             {
                 return true;
             }
-            // Doors are kicked one at a time; anything still in here from a while ago is a door
-            // the player has walked away from, or one the world has unloaded underneath us.
+            // Doors are kicked one at a time; with this many in here, everything but the last
+            // one or two is a door the player walked away from or the world has unloaded.
             if (kicked.Count > 8)
             {
-                List<Door> stale = new List<Door>();
-                foreach (KeyValuePair<Door, float> entry in kicked)
-                {
-                    if (entry.Key == null || now - entry.Value >= KickCooldown)
-                    {
-                        stale.Add(entry.Key);
-                    }
-                }
-                foreach (Door old in stale)
-                {
-                    kicked.Remove(old);
-                }
+                kicked.Clear();
             }
             return false;
         }
 
-        private static void Broadcast(ZDOID door)
+        /// <summary>
+        /// Tells a bare handed player looking at a shut door that it can be kicked. Only a door
+        /// the kick would actually open says so - a locked or warded one keeps the game's text.
+        /// </summary>
+        [HarmonyPatch(typeof(Door), nameof(Door.GetHoverText))]
+        private static class ShowKickHint
         {
-            if (ZRoutedRpc.instance != null)
+            private static void Postfix(Door __instance, ref string __result)
             {
-                // Everybody includes us, and InvokeRoutedRPC runs it here and now, so the bang
-                // lands on the kicker's own screen in the same frame as the kick.
-                ZRoutedRpc.instance.InvokeRoutedRPC(ZRoutedRpc.Everybody, KickRpc, door);
-            }
-            else
-            {
-                RPC_Kick(0L, door);
+                Player player = Player.m_localPlayer;
+                if (!showHint.Value || string.IsNullOrEmpty(__result) || player == null
+                    || player.m_unarmedWeapon == null
+                    || player.GetCurrentWeapon() != player.m_unarmedWeapon.m_itemData
+                    || Check(__instance, player) != Refusal.None)
+                {
+                    return;
+                }
+                __result += Localization.instance.Localize(KickHint);
             }
         }
 
@@ -272,8 +344,9 @@ namespace ThisIsValheim
                 {
                     return;
                 }
-                Bang(door.transform.position + Vector3.up * SoundHeight);
+                // The swing first: a bang that fails must not leave the door at walking pace.
                 Swing(door);
+                Bang(door.transform.position + Vector3.up * SoundHeight);
             }
             catch (Exception e)
             {
@@ -286,7 +359,7 @@ namespace ThisIsValheim
         /// <summary>Sets the configured effects off in the door's face.</summary>
         private static void Bang(Vector3 pos)
         {
-            EffectList list = Effects();
+            EffectList list = effects;
             if (list == null)
             {
                 return;
@@ -325,40 +398,28 @@ namespace ThisIsValheim
         }
 
         /// <summary>
-        /// The configured effect prefabs, looked up once and kept. Nothing is shipped with the
-        /// mod: these are the game's own, so they are whatever this build of the game says they
-        /// are, and a name that is not in the game at all simply drops out of the list.
+        /// Looks the configured effect prefabs up and keeps them in <see cref="effects"/>. Nothing
+        /// is shipped with the mod: these are the game's own, so they are whatever this build of
+        /// the game says they are, and a name that is not in the game at all simply drops out.
+        /// An empty list leaves the kick deliberately silent.
         /// </summary>
-        private static EffectList Effects()
+        private static void ResolveEffects()
         {
-            if (resolved)
-            {
-                return effects;
-            }
+            effects = null;
             if (ZNetScene.instance == null)
             {
-                return null; // too early - the next kick tries again
-            }
-            resolved = true;
-
-            List<string> wanted = new List<string>();
-            foreach (string name in effectPrefabs.Value.Split(','))
-            {
-                string trimmed = name.Trim();
-                if (trimmed.Length > 0)
-                {
-                    wanted.Add(trimmed);
-                }
-            }
-            if (wanted.Count == 0)
-            {
-                return null; // a deliberately silent kick
+                return; // not in a world - the next ZNetScene.Awake tries again
             }
 
             List<EffectList.EffectData> found = new List<EffectList.EffectData>();
             List<string> missing = new List<string>();
-            foreach (string name in wanted)
+            foreach (string entry in effectPrefabs.Value.Split(','))
             {
+                string name = entry.Trim();
+                if (name.Length == 0)
+                {
+                    continue;
+                }
                 GameObject prefab = ZNetScene.instance.GetPrefab(name);
                 if (prefab != null)
                 {
@@ -372,11 +433,16 @@ namespace ThisIsValheim
             // Only the effects that carry a ZNetView are in ZNetScene; the rest live wherever the
             // prefab that uses them loaded them, so they have to be searched for. That is a walk
             // over every object Unity has in memory, which is why it happens once, for all of them
-            // at once, and only for the names that were not found the cheap way.
+            // at once, and only for the names that were not found the cheap way. Only roots count:
+            // a child of some other prefab can carry the same name and is not an effect of its own.
             if (missing.Count > 0)
             {
                 foreach (GameObject go in Resources.FindObjectsOfTypeAll<GameObject>())
                 {
+                    if (go.transform.parent != null)
+                    {
+                        continue;
+                    }
                     int at = missing.IndexOf(go.name);
                     if (at >= 0)
                     {
@@ -393,13 +459,10 @@ namespace ThisIsValheim
             {
                 Debug.LogWarning("[ThisIsValheim] no effect prefab called " + name);
             }
-            if (found.Count == 0)
+            if (found.Count > 0)
             {
-                Debug.LogWarning("[ThisIsValheim] nothing left to play, kicks will be quiet");
-                return null;
+                effects = new EffectList { m_effectPrefabs = found.ToArray() };
             }
-            effects = new EffectList { m_effectPrefabs = found.ToArray() };
-            return effects;
         }
 
         // ---- The swing -----------------------------------------------------------------------

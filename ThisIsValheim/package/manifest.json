@@ -1,6 +1,6 @@
 {
     "name": "ThisIsValheim",
-    "version_number": "0.1.0",
+    "version_number": "0.1.1",
     "website_url": "https://github.com/rausche-kuh/valheimmods",
     "description": "No one tells me how to open a door. Kick doors open like a battering ram hit them",
     "dependencies": [
