@@ -1,28 +1,23 @@
 # Changelog
 
+## Unreleased
+
 ## 0.3.0
 
-- Fast portals: walking into a dungeon or cave entrance, and back out, is now instant — no black
-  screen and no wait. The name of the place still shows as before. A setting turns it off, and
-  then the door fades like a portal.
+- Fast portals: walking into a dungeon or cave entrance, and back out, is now instant.
 - Shared map tables: walk up to a cartography table and your map goes onto it and its map onto
   yours, without touching it — again whenever a pin of yours changes nearby or someone else has
   written to it. A table behind a ward you cannot use is only read.
-- Auto pins: dungeon and cave entrances, ore deposits you strike (copper through flametal, and
-  the soft tissue of the Mistlands giants — tin is left out, it is everywhere), fuling villages and other ruined settlements, tar pits, dragon egg nests
-  and the Dvergr sites of the Mistlands get a map pin by themselves when you get there, named the
-  way the game names them. What counts is worked out from the game itself, so places and ores
-  a future update adds are pinned too. They belong to nobody, so a map table hands each one to
-  everyone exactly once, the shared-map button on the large map hides them all, and a first click
-  ticks one off instead of taking it over. Right click removes one for good. An ore pin is
-  crossed off by itself once the deposit has been mined out, whoever mined it; a setting removes
-  it instead. No pin is added where your map already has one within 10m, so the places you
-  marked yourself, or another pin mod marked, are not marked twice.
+- Auto pins: dungeon and cave entrances, ore deposits you strike (tin / obsidian are left out),
+  fuling villages and other ruined settlements, tar pits, dragon egg nests
+  and the Dvergr sites of the Mistlands.
 - Death pins: a death pin disappears by itself once your grave is gone, whoever emptied it, and a
   death that leaves no grave (nothing on you, or everything kept) leaves no pin either.
 - Those pins are coloured by the biome they stand in, and ore and place pins hide when the large
   map is zoomed far out. Three new toggles at the bottom right of the large map, next to "Visible
   to other players", show or hide dungeon, ore and place pins on both maps.
+- The "Nearby use" button no longer shows on chests you did not build, such as dungeon chests,
+  which nearby use never takes from anyway.
 
 ## 0.2.3
 

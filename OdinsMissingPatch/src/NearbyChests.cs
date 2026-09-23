@@ -89,16 +89,12 @@ namespace OdinsMissingPatch
         private static bool IsInReach(Entry entry, long playerId)
         {
             Container chest = entry.Container;
-            if (entry.Tombstone || chest.m_inventory == null)
+            if (!Eligible(entry) || chest.m_inventory == null)
             {
                 return false;
             }
             ZNetView nview = chest.m_nview;
             if (nview == null || !nview.IsValid())
-            {
-                return false;
-            }
-            if (entry.Piece == null || !entry.Piece.IsPlacedByPlayer())
             {
                 return false;
             }
@@ -165,6 +161,22 @@ namespace OdinsMissingPatch
                 nview.ClaimOwnership();
             }
             return nview.IsOwner();
+        }
+
+        /// <summary>
+        /// A chest the nearby tweaks could ever use: one a player placed, not a grave. Found
+        /// chests (a dungeon's, a village's) and tombstones never are, so the switch stays off
+        /// their panel.
+        /// </summary>
+        private static bool Eligible(Container chest)
+        {
+            return Eligible(Registry.Find(e => e.Container == chest));
+        }
+
+        private static bool Eligible(Entry entry)
+        {
+            return entry != null && !entry.Tombstone
+                && entry.Piece != null && entry.Piece.IsPlacedByPlayer();
         }
 
         internal static bool IsExcluded(Container chest)
@@ -424,7 +436,8 @@ namespace OdinsMissingPatch
         /// left and the top right of the panel - the only free width that band has, the chest's
         /// name being centred between them. Otherwise the band is full (Take all, the name,
         /// Stack all) and they go beside the panel from its top edge down, where ChestButtons'
-        /// column would start. The switch shows while any of the four nearby tweaks is on, the
+        /// column would start. The switch shows on a chest a player placed while any of the four
+        /// nearby tweaks is on, the
         /// clear button while the chest's favourites mean anything and the chest carries some.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
@@ -452,7 +465,7 @@ namespace OdinsMissingPatch
                 Container chest = __instance.m_currentContainer;
                 bool panel = chest != null && __instance.m_container.gameObject.activeSelf;
                 int slot = 0;
-                if (panel && AnyTweakOn && NearbyUse.Show(__instance))
+                if (panel && AnyTweakOn && Eligible(chest) && NearbyUse.Show(__instance))
                 {
                     NearbyUse.SetLabel(IsExcluded(chest) ? "$omp_nearby_off" : "$omp_nearby_on");
                     NearbyUse.SetTooltip("$omp_nearby_topic", "$omp_nearby_tip");

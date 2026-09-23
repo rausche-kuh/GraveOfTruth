@@ -150,4 +150,5 @@ player's own save).
   within 8m of it on two sweeps in a row is removed (`RemoveWithGrave`); a death that set up no
   grave has its pin removed right after `Player.OnDeath` (`OnlyWithGrave`).
 
-Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel.
+Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel,
+which only a chest a player placed has: found chests and graves are never used from afar.
