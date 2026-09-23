@@ -2,9 +2,7 @@
 
 No one tells me how to open a door.
 
-Kick a door and it bursts open. Put your weapon away, look at a shut door, and the kick button
-shows up under it. A warded door, or one that wants a key you don't carry, doesn't budge: it throws
-you back instead.
+Kick a door and it bursts open.
 
 ## Multiplayer
 

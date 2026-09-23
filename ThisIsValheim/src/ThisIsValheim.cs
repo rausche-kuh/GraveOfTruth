@@ -24,7 +24,7 @@ namespace ThisIsValheim
     {
         public const string GUID = "rauschekuh.thisisvalheim";
         public const string NAME = "This Is Valheim!";
-        public const string VERSION = "0.1.1";
+        public const string VERSION = "0.1.2";
 
         /// <summary>Broadcast to every modded client: the bang and the fast swing, per door.</summary>
         private const string KickRpc = "ThisIsValheim_Kick";
@@ -43,6 +43,12 @@ namespace ThisIsValheim
         /// slam it closed again.
         /// </summary>
         private const float KickCooldown = 0.6f;
+
+        /// <summary>
+        /// How close to the other half of a double door a kick has to land to take it along.
+        /// Without this the kick has to find the seam exactly to open both.
+        /// </summary>
+        private const float SeamReach = 0.6f;
 
         /// <summary>The bang goes off at boot height rather than at the door's foot.</summary>
         private const float SoundHeight = 1f;
@@ -67,6 +73,12 @@ namespace ThisIsValheim
 
         private static ThisIsValheimPlugin instance;
         private static ZRoutedRpc registeredOn;
+
+        /// <summary>
+        /// Set for the length of one StartAttack call while a secondary attack aimed at a door is
+        /// being turned into a kick - see <see cref="KickAtDoor"/>.
+        /// </summary>
+        private static bool forceUnarmed;
 
         /// <summary>The configured effects, resolved on every world load and on every config change.</summary>
         private static EffectList effects;
@@ -99,7 +111,7 @@ namespace ThisIsValheim
                 "crypts shut until you have found the key, the way the game intends - carry the " +
                 "key and the kick opens the door with it.");
             showHint = Config.Bind("Kick", "ShowHint", true,
-                "Whether a door you could kick open says so when you look at it bare handed.");
+                "Whether a door you could kick open says so when you look at it.");
             effectPrefabs = Config.Bind("Effects", "Prefabs", DefaultEffects,
                 "The game's own effect prefabs that go off at the door, by name, separated by " +
                 "commas. Drop one to lose that layer, or put fx_GP_Activation in for the sound a " +
@@ -149,7 +161,7 @@ namespace ThisIsValheim
         [HarmonyPatch(typeof(Attack), "AddHitPoint")]
         private static class NoticeKick
         {
-            private static void Postfix(Attack __instance, GameObject go)
+            private static void Postfix(Attack __instance, GameObject go, Vector3 point)
             {
                 try
                 {
@@ -160,14 +172,58 @@ namespace ThisIsValheim
                         return;
                     }
                     Door door = go.GetComponentInParent<Door>();
-                    if (door != null)
+                    if (door != null && TryKick(door, player))
                     {
-                        TryKick(door, player);
+                        KickNeighbours(door, player, point);
                     }
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning("[ThisIsValheim] kick check failed: " + e);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Turns the secondary attack into the kick while the player is looking at a shut door,
+        /// whatever is in their hands - a door gets the boot, not the weapon's special move.
+        /// StartAttack takes its attack from GetCurrentWeapon, so for the length of this one call
+        /// that answers with the bare hands; everything after (the reach, the stamina, the
+        /// animation, the hit that NoticeKick sees) is then the game's own unarmed kick.
+        /// </summary>
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.StartAttack))]
+        private static class KickAtDoor
+        {
+            private static void Prefix(Humanoid __instance, bool secondaryAttack)
+            {
+                forceUnarmed = false;
+                Player player = __instance as Player;
+                if (!secondaryAttack || player == null || player != Player.m_localPlayer
+                    || player.m_unarmedWeapon == null)
+                {
+                    return;
+                }
+                GameObject hovering = player.GetHoverObject();
+                Door door = hovering != null ? hovering.GetComponentInParent<Door>() : null;
+                // The same doors a bare handed kick acts on: one that would open, and one whose
+                // ward or lock throws the kicker back. An open or swinging door is left alone.
+                forceUnarmed = door != null && Check(door, player) != Refusal.Busy;
+            }
+
+            private static void Finalizer()
+            {
+                forceUnarmed = false;
+            }
+        }
+
+        [HarmonyPatch(typeof(Humanoid), nameof(Humanoid.GetCurrentWeapon))]
+        private static class KickWeapon
+        {
+            private static void Postfix(Humanoid __instance, ref ItemDrop.ItemData __result)
+            {
+                if (forceUnarmed && __instance == Player.m_localPlayer && __instance.m_unarmedWeapon != null)
+                {
+                    __result = __instance.m_unarmedWeapon.m_itemData;
                 }
             }
         }
@@ -221,24 +277,44 @@ namespace ThisIsValheim
             return door.m_keyItem != null && !lockedDoors.Value;
         }
 
-        /// <summary>Boots the door open, or bounces the kicker off one that will not give.</summary>
-        private static void TryKick(Door door, Player player)
+        /// <summary>
+        /// Takes the other half of a double door along: any door with a collider within
+        /// <see cref="SeamReach"/> of where the kick landed. Only called after the first door
+        /// opened, so a locked pair rebuffs once, not twice.
+        /// </summary>
+        private static void KickNeighbours(Door door, Player player, Vector3 point)
+        {
+            foreach (Collider collider in Physics.OverlapSphere(point, SeamReach))
+            {
+                Door other = collider.GetComponentInParent<Door>();
+                if (other != null && other != door)
+                {
+                    TryKick(other, player);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Boots the door open, or bounces the kicker off one that will not give. True only when
+        /// the door was actually opened.
+        /// </summary>
+        private static bool TryKick(Door door, Player player)
         {
             if (Recent(door))
             {
-                return;
+                return false;
             }
             Refusal refusal = Check(door, player);
             if (refusal == Refusal.Busy)
             {
-                return;
+                return false;
             }
             kicked[door] = Time.time;
             Vector3 away = (player.transform.position - door.transform.position).normalized;
             if (refusal != Refusal.None)
             {
                 Rebuff(door, player, away, refusal);
-                return;
+                return false;
             }
             // The key is used the way Door.Interact uses it: named on screen, and gone if the
             // door eats its key. With LockedDoors on the kick needed no key, so none is spent.
@@ -265,6 +341,7 @@ namespace ThisIsValheim
             {
                 Game.instance.IncrementPlayerStat(PlayerStatType.DoorsOpened);
             }
+            return true;
         }
 
         /// <summary>
@@ -299,8 +376,9 @@ namespace ThisIsValheim
         }
 
         /// <summary>
-        /// Tells a bare handed player looking at a shut door that it can be kicked. Only a door
-        /// the kick would actually open says so - a locked or warded one keeps the game's text.
+        /// Tells a player looking at a shut door that it can be kicked - with anything in their
+        /// hands, since <see cref="KickAtDoor"/> kicks regardless. Only a door the kick would
+        /// actually open says so - a locked or warded one keeps the game's text.
         /// </summary>
         [HarmonyPatch(typeof(Door), nameof(Door.GetHoverText))]
         private static class ShowKickHint
@@ -310,7 +388,6 @@ namespace ThisIsValheim
                 Player player = Player.m_localPlayer;
                 if (!showHint.Value || string.IsNullOrEmpty(__result) || player == null
                     || player.m_unarmedWeapon == null
-                    || player.GetCurrentWeapon() != player.m_unarmedWeapon.m_itemData
                     || Check(__instance, player) != Refusal.None)
                 {
                     return;
@@ -490,7 +567,29 @@ namespace ThisIsValheim
         private static IEnumerator SwingRoutine(Door door, Animator animator)
         {
             animator.speed = Mathf.Max(1f, swingSpeed.Value);
-            yield return new WaitForSeconds(SwingWindow);
+            // Held until the door has swung open and come to rest, or is being shut again -
+            // a door closed right after the kick must close at its normal pace. SwingWindow is
+            // only the cap for a UseDoor that never comes back.
+            bool opened = false;
+            float until = Time.time + SwingWindow;
+            while (animator != null && Time.time < until)
+            {
+                int state = animator.GetInteger("state");
+                if (opened && state == 0)
+                {
+                    break; // shut again
+                }
+                if (state != 0)
+                {
+                    opened = true;
+                    AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(0);
+                    if (info.IsTag("open") && !animator.IsInTransition(0) && info.normalizedTime >= 1f)
+                    {
+                        break; // swung open and at rest
+                    }
+                }
+                yield return null;
+            }
             // The door may have been unloaded or torn down in the meantime; the animator is what
             // has to be put back, and only while it is still there.
             if (animator != null)

@@ -1,6 +1,6 @@
 # ThisIsValheim
 
-Kicking a door open — with the game's own bare handed kick — sets a battering ram off in its
+Kicking a door open — with the game's own bare handed kick, whatever the player is holding — sets a battering ram off in its
 face and makes it swing four times faster.
 [`package/README.md`](package/README.md) is the Thunderstore page and describes what the mod
 actually does.

@@ -9,10 +9,17 @@ splintering wood and a puff of sawdust go off at the door. The kick is broadcast
 client; the door itself is opened through the game's own `UseDoor` RPC, so the server and unmodded
 clients see an ordinary door swing.
 
-**Unreleased:** a warded or key-locked door that refuses the kick plays its own `m_lockedEffects`,
+**Shipped (0.1.1):** a warded or key-locked door that refuses the kick plays its own `m_lockedEffects`,
 shows the game's `$msg_door_needkey` / `$piece_noaccess` and staggers the kicker; a bare handed
 player looking at a door the kick would open gets a `$KEY_SecondaryAttack` "Kick" line in the
 hover text (`ShowHint`).
+
+**Shipped (0.1.2):** the secondary attack while hovering a shut door is the kick whatever is held
+(`KickAtDoor`), and the hint shows regardless of the weapon; a kick that opens a door also kicks
+any other door with a collider within `SeamReach` (0.6m) of the hit point (`KickNeighbours`), so
+double doors no longer need the seam hit exactly. Only after the first door opened, so a locked
+pair rebuffs once; each half gets its own bang. The fast swing now ends when the door has
+opened or is shut again, so closing it right after the kick is at normal speed.
 
 | Path | What |
 | --- | --- |
@@ -41,9 +48,15 @@ hover text (`ShowHint`).
 - A key door only refuses a kicker without the key (`Door.HaveKey`, world level matched like
   vanilla). With the key, `TryKick` does what `Door.Interact` does: `$msg_door_usingkey`, and the
   key removed when `m_consumeKey`. With `LockedDoors` on, the lock is ignored and no key is spent.
+- **Any weapon kicks a door.** `KickAtDoor` is a `Humanoid.StartAttack` prefix: for the local
+  player's secondary attack with a door under `GetHoverObject()` and `Check` not `Busy`, it sets
+  `forceUnarmed`, and a `GetCurrentWeapon` postfix answers with `m_unarmedWeapon` while that is
+  set; a finalizer clears it. `Attack` keeps its own `m_weapon` from then on, so only that one
+  call is fooled and the rest is the ordinary unarmed kick (range, stamina, `NoticeKick`). Bows
+  never get here — their input goes through `UpdateAttackBowDraw`, not `StartAttack(secondary)` —
+  and hovering reaches further than the kick (1.6), so from across the room it is a whiffed kick.
 - The hover hint is a `Door.GetHoverText` postfix that appends
-  `[$KEY_SecondaryAttack] Kick` only when `Check` is `None` and `GetCurrentWeapon()` is the
-  unarmed weapon. `Localization.Translate` turns `KEY_<name>` into the bound key, and into the
+  `[$KEY_SecondaryAttack] Kick` only when `Check` is `None`, whatever is held. `Localization.Translate` turns `KEY_<name>` into the bound key, and into the
   `Joy<name>` binding when a gamepad is active. "Kick" is literal English, as the game's own
   "Change pose" on the armor stand is.
 - The ward is checked but deliberately **not** flashed (`PrivateArea.CheckAccess(..., flash: false)`).
@@ -77,10 +90,13 @@ hover text (`ShowHint`).
   instance (`m_functions.Add` throws on a duplicate). The handler bails out on a dedicated server.
   A receiver whose `ZNetScene.FindInstance` comes up empty simply has the door out of its loaded
   zones and does nothing.
-- The fast swing is `Door.m_animator.speed`, wound up for `SwingWindow` (1.5s) and put back. It
-  cannot be tied to the animation's length: the state change arrives through `UseDoor` whenever
-  the door's owner gets to it, so the animator is sped up *before* the animation starts and held
-  through the round trip. One coroutine per door in `swinging`, so a second kick on the same door
+- The fast swing is `Door.m_animator.speed`, wound up and put back. It cannot be tied to the
+  animation's length: the state change arrives through `UseDoor` whenever the door's owner gets
+  to it, so the animator is sped up *before* the animation starts and held through the round
+  trip. `SwingRoutine` polls the animator's `state` parameter each frame and restores the speed
+  once it has gone non-zero and the `open`-tagged state has finished (`normalizedTime >= 1`, not
+  in transition), or as soon as it drops back to 0 — so a door shut right after the kick closes
+  at normal speed. `SwingWindow` (1.5s) is only the cap. One coroutine per door in `swinging`, so a second kick on the same door
   does not restore the speed out from under the first.
 - Nothing is shipped in `assets/` and nothing is spawned with a ZDO: the effects go up under
   `ZNetView.m_forceDisableInit` (the game's own idiom — the `ZNetView`, if there is one, destroys

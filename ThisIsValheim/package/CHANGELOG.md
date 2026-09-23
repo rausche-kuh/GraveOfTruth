@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+
+- look at a shut door and press the secondary attack button, and you kick it instead of swinging
+  your weapon's special move.
+- improved double door kicking
+- fixed door closing speed
+
 ## 0.1.1
 
 - Kicking a warded or locked door no longer does nothing: it rattles, tells you why it won't
