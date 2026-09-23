@@ -14,7 +14,7 @@ namespace OdinsMissingPatch
     {
         public const string GUID = "rauschekuh.odinsmissingpatch";
         public const string NAME = "Odin's Missing Patch";
-        public const string VERSION = "0.2.3";
+        public const string VERSION = "0.3.0";
 
         /// <summary>Every tweak the mod ships. Listing one here is all it takes to enable it.</summary>
         private static readonly Tweak[] Tweaks =
@@ -40,6 +40,10 @@ namespace OdinsMissingPatch
             EquipWhileRunning.Instance,
             AutoShield.Instance,
             PocketUpgrades.Instance,
+            SharedMapTable.Instance,
+            AutoPins.Instance,
+            PinLooks.Instance,
+            DeathPins.Instance,
         };
 
         void Awake()

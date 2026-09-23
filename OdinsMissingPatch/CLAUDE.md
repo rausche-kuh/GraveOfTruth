@@ -3,9 +3,10 @@
 A collection of quality of life changes, each one its own configurable tweak. See the root
 `CLAUDE.md` for the shared build, the scripts and the environment.
 
-Twenty-one tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
+Twenty-five tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
 (client side, world state, character) and which deep note covers it. Most are client side: the
-chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the character.
+chest tweaks, `EndlessFuel` and `SharedMapTable` write world state, `PowerPicker` and `AutoPins`
+write the character.
 
 | Path                       | What                                                                                                                                                                                                 |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,6 +20,7 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | `src/PanelButtons.cs`      | Icon buttons for the inventory screen, cut from the chest panel's Take all button, and where a column beside a panel is. Used by ChestButtons, InventoryButtons and the chest panel's text buttons.  |
 | `src/InventorySorter.cs`   | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps.                                                                                                       |
 | `src/MaterialOrder.cs`     | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies.                                                                                                  |
+| `src/UniversalPins.cs`     | Map pins that belong to nobody (a fixed owner, an `OdinsMissingPatch_<category>` author): the identity, adding, the removed-pin record, and the patches that keep them through a table read and turn a claim into a tick. Used by AutoPins, SharedMapTable and PinLooks. |
 | `src/Translations.cs`      | Hands `assets/translations.csv` to the game's localization on every language setup.                                                                                                                  |
 | `assets/icons/`            | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL.                                                                                                                            |
 | `assets/translations.csv`  | Every word the mod shows, one row per `$omp_` token, one column per language                                                                                                                         |
@@ -59,4 +61,5 @@ chest tweaks and `EndlessFuel` write world state, `PowerPicker` writes the chara
 | the radial menu and guardian powers        | [`docs/radial-menu.md`](docs/radial-menu.md)                                                                                |
 | equipping, the hotbar, the equip queue     | [`docs/equipping.md`](docs/equipping.md)                                                                                    |
 | the trader's shelf and inventory rows      | [`docs/trader.md`](docs/trader.md) — the `Trader` shelf, how a gate is moved, the two pocket upgrades, `invrows` |
+| the map, its pins, or map tables           | [`docs/map-pins.md`](docs/map-pins.md) — shared tables, auto pins, universal pins and pin looks, plus the map facts they rest on |
 | touching ground another mod already covers | [`docs/references.md`](docs/references.md) — the reference checkouts, what each solves and how this mod differs             |

@@ -127,3 +127,88 @@ Jötunn and syncs its gameplay settings from the server; this mod does neither.
 - `Stations/*` — its stations pull ore, food and fuel by themselves on their update ticks and
   store their output; the roadmap wanted none of that, so `NearbyFuel` widens the manual
   add-fuel interactions and nothing else.
+
+## Map tables and auto pins
+
+Three checkouts and one scratch read cover the ground of [`map-pins.md`](map-pins.md); none is a
+dependency and none of their code comes in. What each one settled for the plan:
+
+`~/Documents/Code/test/othervalheimmods/ValheimServersideQoL` (Thunderstore `ServersideQoL/*`, a
+suite of server-only processors on its own ZDO framework; the checkout has **no license file**,
+so read it, copy nothing). `ServersideQoL.AutoMapTables/AutoMapTablesProcessor.cs` and `Config.cs`
+are the model for the *mechanisms*, not the shape:
+
+- It rewrites each table's vanilla `s_data` blob on the server whenever a permitted player is
+  within one zone, merging its own pins with the pins already there; it never touches the
+  client. `SharedMapTable` does the same merge from the client through the game's own write.
+- A dungeon is a location prefab holding a `Teleport`, pinned at the entrance with the
+  component's `m_enterText`; an ore deposit is a `MineRock5` whose drop some `Smelter` accepts,
+  pinned only once it has been struck; both derived from game data, no name list. `AutoPins`
+  keeps both derivations and widens the ore one to `MineRock` and pickaxe-only `Destructible`s,
+  which it misses (tin, the lava leviathan's flametal). Its `Cu`/`Ag`/`Fe` labels were tried and
+  dropped: the pin names the metal in the game's words.
+- Its pins carry the plugin GUID as `m_author` and a per-player "mod owner id"; `UniversalPins`
+  keeps the author marker (with the category in it) and one fixed owner for everyone instead.
+- Ward permissions gate its writes by reading the ward's permitted list off the ZDO;
+  `SharedMapTable` asks `PrivateArea.CheckAccess` on the client, which is the same answer.
+
+`~/Documents/Code/test/othervalheimmods/BetterCartographyTable` (nbusseneau, **MIT**, needs
+Jötunn, Thunderstore `nbusseneau/BetterCartographyTable`) is the model for what *not* to do
+here, and the source of one trick:
+
+- Its own ZDO keys and RPCs beside the vanilla blob, a `PinData` subclass swapped in by an
+  `AddPin` transpiler, both mouse buttons replaced, every pin's owner zeroed, `GetMapData`,
+  `GetSharedMapData` and `AddSharedMapData` transpiled to shape-matched IL, shared pins saved
+  to `m_customData` instead of the profile. It works, and every one of those breaks on the next
+  game update. The plan uses the vanilla blob, vanilla owner semantics and prefix/postfix only.
+- Sync only on interaction: pull on open, push on close, per-click RPCs between players with the
+  same table open. No proximity sync, which is the whole point of `SharedMapTable`.
+- The trick worth keeping: `UI/MinimapPinsToggle.cs` clones the vanilla shared-map toggle panel
+  (`Minimap.m_sharedMapHint`) for extra toggles, if a per-category toggle is ever wanted.
+
+`~/Documents/Code/test/othervalheimmods/BetterMap` (**no license file**, "provided as-is"; read it,
+copy nothing) is the closest in spirit, client side and native, and its `PINS.md` is the best
+list of location prefab names by biome, with the vanilla icon flags marked:
+
+- `scripts/Pins/AutoPins.cs` sweeps `ZNetScene.m_instances` every two seconds within the explore
+  radius and matches a curated rule table (`PinRules.cs`) by prefab or location hash and biome.
+  `AutoPins` here reads `Location.s_allLocations` and hooks `MineRock5.Damage` instead: tens of
+  entries, or none, in place of thousands.
+- `scripts/Pins/PinRecord.cs` remembers what it pinned in `m_customData["BetterMap.pinned"]`
+  (`world;category;x;z|...`, one decimal), consulted instead of the map so a deleted pin stays
+  deleted. The plan's dismissed record has the same format and purpose, but records deletions
+  rather than placements, because a universal pin comes back through the table anyway.
+- `scripts/Pins/PinLegend.cs` invents pin types past the enum, grows `m_visibleIconTypes`,
+  adds to `m_icons` and `m_selectedIcons`, and clones the legend buttons from the fifth vanilla
+  one. Rejected here: it degrades to `Icon3` without the mod and needs the whole panel
+  re-laid-out. Its green tint for tames, reapplied after `UpdatePins`, is the colouring shape.
+- `scripts/Pins/NamedPins.cs` names the trader location pins and re-pins a portal from a
+  `TeleportWorld.SetText` postfix because a pin's label is built once; the portal source in the
+  plan does the same.
+- Its rule table is the widest of the three and all by name: besides locations it pins
+  vegetation (beehives, berry bushes, mushrooms, thistle, seeds, flint, the Mistlands' sap roots,
+  Ashlands pots and vines), greydwarf nests and spawner runestones, boss altars (off by default)
+  and the ocean leviathan. Its location names predate the Mistlands rework
+  (`Mistlands_GuardTower1-3` are `_new` / `_ruined_new` now). `AutoPins` keeps to places and
+  ore, found by rule; foraging is left to the player, and a boss altar is the game's to pin
+  through a vegvisir.
+
+Searica's Discovery Pins (Thunderstore `Searica/DiscoveryPins`, source on GitHub
+`searica/DiscoveryPins`, **GPL-3.0** — read it, copy nothing, the licence would bind the mod) was
+read from a scratch clone, not kept as a checkout:
+
+- Dungeons are a `Location` with `m_hasInterior` and a `Teleport`; overworld dungeons a `Location`
+  with a `DungeonGenerator` and no interior, named from the theme's enum name (English only). Both
+  are rules on game data, like `AutoPins`, which names the themes through `$omp_place_*` instead.
+- Ore is a `MineRock`, `MineRock5` or `Destructible` (via `m_spawnWhenDestroyed`) whose drop is on
+  a hard-coded item list (tin, copper, silver, obsidian, soft tissue, black marble, flametal),
+  pinned on the hit and **removed when the rock is used up** (`AllDestroyed`, `Destructible.Destroy`).
+  `AutoPins` takes the same three hooks with the smelter derivation instead of the list. For a
+  used-up deposit it looks at the world instead (no ore rock left near the pin), since
+  `AllDestroyed` only runs on the rock's owner; ServersideQoL, being the server, uses the ZDO's
+  destruction. `AutoPins` ticks the pin by default rather than removing it.
+- It also clears the death pin when the tombstone is emptied (a `TombStone.GiveBoost` postfix, a
+  pin within 1m) and drops it after a death with an empty inventory. `DeathPins` does both by
+  other means: `GiveBoost` only runs on the grave's ZDO owner and the inventory count ignores
+  kept gear, so it asks the world for the grave and `TombStone.Setup` for whether one was made.
+  Its "no auto pin within 10m of any pin" spacing became `AutoPins.PinSpacing`.

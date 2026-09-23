@@ -31,6 +31,10 @@ player's own save).
 | EquipWhileRunning | client | [equipping](equipping.md) |
 | AutoShield | client | [equipping](equipping.md) |
 | PocketUpgrades | client | [trader](trader.md) |
+| SharedMapTable | world state (map tables, the game's own write) | [map-pins](map-pins.md) |
+| AutoPins | character (the removed-pin record) | [map-pins](map-pins.md) |
+| PinLooks | client | [map-pins](map-pins.md) |
+| DeathPins | client | [map-pins](map-pins.md) |
 
 ## Shipped (0.1.0)
 
@@ -125,5 +129,25 @@ player's own save).
   still bought from Haldor at their own price, once per character, for one row each. The item's own
   `m_requiredGlobalKey` is rewritten from the vanilla one kept aside per item, in a prefix on
   `Trader.GetAvailableItems`, so the game's own filter still asks the question.
+- **Shared map table** — a cartography table syncs by itself: within `SyncRange` (64m) the game's
+  own write runs silently (read, merge, send) on arrival, when a saved pin changes while in range
+  and when someone else wrote to the table, at most every `MinInterval` (10s) per table. A table
+  behind a ward the player has no access to is only read.
+- **Auto pins** — dungeon entrances, struck ore deposits, and places found by rule
+  (generated camps and villages, tar pits, dragon eggs; never a vegvisir ruin) or listed in `PlaceList`
+  get an ordinary map pin with a vanilla icon, owned by nobody (`UniversalPins`), so a table
+  hands each one to everyone exactly once. Locations within `DiscoverRange` (40m) every three
+  seconds; ore from the strike itself (`ExtraOre` adds soft tissue, `SkipOre` drops tin). No pin
+  within `PinSpacing` (10m) of a saved non-universal, non-death pin. Portals are not pinned — a
+  separate feature to come. A mined-out deposit's pin is ticked when you
+  come by (`MinedOut`: `Tick`, `Remove` or `Keep`). A right click removes one for good (recorded
+  on the character, per world).
+- **Pin looks** — those pins are tinted by the biome they stand in instead of the shared-pin
+  grey, and ore and place pins hide beyond zoom 0.5 on the large map. `MapToggles` adds a toggle
+  per category above the large map's "visible to other players" one; each sets `ShowDungeons`,
+  `ShowOre` or `ShowPlaces`, which hide that category on both maps.
+- **Death pins** — a death pin within 32m whose grave (a `TombStone` the local player owns) is not
+  within 8m of it on two sweeps in a row is removed (`RemoveWithGrave`); a death that set up no
+  grave has its pin removed right after `Player.OnDeath` (`OnlyWithGrave`).
 
 Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel.

@@ -75,6 +75,22 @@ because I want them, not because I can argue they are neutral:
 - **Pocket upgrades** — Haldor sells the two extra inventory rows, **Wider Pockets** and **Deeper
   Pockets**, once the boss you choose has fallen in that world. Wider Pockets waits for the Elder
   instead of Moder by default; Deeper Pockets keeps the Queen.
+- **Shared map table** — come within 64m of a cartography table and your map is written onto it
+  and its map onto yours, silently, with no click. Again when a pin of yours changes nearby or
+  someone else has written to it, never more than every ten seconds.
+- **Auto pins** — dungeon and cave entrances, ore deposits you strike (not tin, which is
+  everywhere; soft tissue from the Mistlands giants counts) and places (fuling villages and other ruined settlements, tar pits, dragon eggs,
+  Dvergr excavations and watchtowers, ...) get an ordinary map pin when you come within
+  40m. It works out what counts from the game's own data, so a new biome needs no update. The pins belong to nobody: a map table shares each
+  one exactly once, the large map's shared-map button hides them all, a first click ticks one off,
+  and a right click removes it for good. A mined-out deposit's pin is crossed off when you pass it
+  (or removed, if you prefer). Nothing is pinned within 10m of a pin you already have, so maps
+  from another pin mod are not doubled up.
+- **Pin looks** — those pins are coloured by their biome, and ore and place pins hide when the
+  large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
+  other players", show or hide dungeon, ore and place pins.
+- **Death pins** — a death pin goes away by itself once your grave is gone, whoever emptied it,
+  and a death that leaves no grave leaves no pin.
 
 ## Configuration
 
@@ -97,12 +113,18 @@ anywhere in the sentence. Send one over and it ships with the next version.
 
 Client side; no server install, and nothing required of anyone else.
 
-Most of it never leaves your machine. Three things touch the world, and each does it the way you
+Most of it never leaves your machine. Four things touch the world, and each does it the way you
 would by hand: **area repair** sends the game's own repair, one piece at a time. The **chest
 tweaks** take a chest over for the write exactly as opening it does, skip a chest someone else has
 open or that you could not open yourself, and respect the per-chest **Nearby use** switch stored
 with it. **Endless fuel** writes the fuel on fires your machine owns — Valheim gives a fire to
-whoever is nearest, so a fire only a modless player stands by burns down as usual.
+whoever is nearest, so a fire only a modless player stands by burns down as usual. The **shared
+map table** writes a table exactly as its Write button does, and never one behind a ward you
+cannot use.
+
+Auto pins travel on map tables in the game's own format, so a player without the mod reads them
+from a table as ordinary shared pins. Removing one is yours alone: other players with the mod keep
+theirs and bring it back to the table.
 
 Two caveats. Client-side range tweaks reach only you: a player without the mod has vanilla range
 at the same bench and sees mist close in at the vanilla distance. And **keep gear on death** goes
@@ -146,6 +168,15 @@ on its own or want it server-enforced. **Do not run both of a pair.**
 - Pocket upgrades follows chooweey's
   [EarlyHaldorPockets](https://valheim.hexium.gg/mods/chooweey/EarlyHaldorPockets).
 
+- Auto pins do what Searica's
+  [Discovery Pins](https://thunderstore.io/c/valheim/p/Searica/DiscoveryPins/) does, which also
+  clears the death pin when you pick your grave back up and mass-pins on a key; here the pins are
+  shared through map tables instead.
+- Shared map tables go where nbusseneau's
+  [Better Cartography Table](https://thunderstore.io/c/valheim/p/nbusseneau/BetterCartographyTable/)
+  goes by another road: that one adds public and private pins and syncs on use; this one keeps the
+  game's own table and syncs by walking up to it.
+
 ## Recommendations
 
 Mods I run beside this one. None of them overlap it — they fill the gaps this one leaves.
@@ -153,9 +184,6 @@ Mods I run beside this one. None of them overlap it — they fill the gaps this 
 - [Unshamed](https://valheim.hexium.gg/mods/Azumatt/Unshamed) — gives you back the achievements
   Valheim switches off the moment it sees a mod. It unlocks nothing you have not earned, and it
   can backfill the progress your modded hours already made.
-- [Discovery Pins](https://thunderstore.io/c/valheim/p/Searica/DiscoveryPins/) — pins what you find
-  on the map by itself: dungeons, ore, portals, and it clears the death pin when you pick your
-  grave back up. A key mass-pins everything nearby.
 - [HUD Compass](https://thunderstore.io/c/valheim/p/Neobotics/HUDCompass/) — a compass across the
   top of the screen, carrying live markers for your ships, carts and portals so you can find where
   you left them.
