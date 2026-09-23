@@ -1,7 +1,8 @@
 # Map pins and map tables
 
-The area doc for `SharedMapTable`, `AutoPins`, `PinLooks` and the helper they share,
-`src/UniversalPins.cs`, plus `DeathPins`, which only tidies the game's own death pin. Implemented 2026-09-23 from the handover plan this file used to be; it
+The area doc for `SharedMapTable`, `AutoPins`, `PinLooks`, the helpers they share
+(`src/UniversalPins.cs`, `src/PinBroadcast.cs`), plus `DeathPins`, which only tidies the game's
+own death pin. Implemented 2026-09-23 from the handover plan this file used to be; it
 **builds but has not been run in game yet** — see "Not yet verified in game" at the end before
 trusting any of it. Every fact in "How the game does it" was read out of
 `decompiled/assembly_valheim/` for the current build, with line numbers.
@@ -13,7 +14,7 @@ write, and everyone else has to walk there and read. And pins are a chore: placi
 click, a name, another click, so nobody pins the crypt they just cleared. The result is a map that
 only the one player who explored an area can navigate.
 
-Three things, all meant to feel like the game already did them:
+Four things, all meant to feel like the game already did them:
 
 1. **A table shares by itself** (`SharedMapTable`). Stand near a map table and your map is on it
    and its map is on yours. Nothing to click.
@@ -28,11 +29,16 @@ Three things, all meant to feel like the game already did them:
    they pass through, and can be hidden as a group or by category (toggles on the large map),
    coloured by biome so they read at a glance.
 
+4. **Those pins reach everyone at once** (`PinBroadcast`). A pin made on one client is on every
+   other modded client's map the same moment, through a routed RPC to everybody, and a player
+   who joins asks the others for theirs once. The tables are still the road for a player without
+   the mod.
+
 Deliberately not done: new pin types with own icons and cloned legend buttons (BetterMap, see
 `references.md`; it degrades on uninstall and is a lot of UI surgery), a server-side component,
 or replacing the table's protocol (BetterCartographyTable). Everything is client side and speaks
 the game's own table format, so a player without the mod sees the auto pins as ordinary shared
-pins.
+pins; the broadcast is a routed RPC the server forwards without knowing it.
 
 The Forge of Potential is location `AncientUpgradeStation`, flagged icon-placed and unique in the
 game data: the game itself draws it on every map once its zone has been generated, like Haldor and
@@ -204,6 +210,19 @@ private member below reachable.
 - **Per character storage** is `Player.m_customData` (Player.cs 581), a string dictionary saved
   and loaded with the character. BetterMap keeps its pin record there, BetterCartographyTable its
   shared pins.
+- **Routed RPCs** (`ZRoutedRpc.cs`): `InvokeRoutedRPC(target, name, params)` (line 120)
+  serialises the parameters, handles the call **locally too** when the target is `m_id` or
+  `Everybody` (0), and sends it on. A client sends everything to the server; the server
+  (`RouteRPC`, 140) forwards a targeted call to that one peer and an `Everybody` call to every
+  ready peer but the sender - whether or not the server has the mod, since it never looks at the
+  method. A receiver (`HandleRoutedRPC`, 189) looks the method hash up in `m_functions` and
+  **silently drops one it does not know**, so a client without the mod is unaffected. `Register`
+  (210) takes an `Action<long, ...>` whose first argument is the sender's id; `ZPackage` is a
+  legal parameter (the table's own `MapData` RPC uses one). `ZNet.Awake` (ZNet.cs 349) builds a
+  fresh `ZRoutedRpc` per session, so a registration has to be repeated per session (`Game.Start`
+  postfix, keyed on the instance, as GraveOfTruth and ThisIsValheim do). `m_id` is the local
+  peer id; `Game.SpawnPlayer` sets the local player (`SetLocalPlayer`, Game.cs 498) before
+  `OnSpawned`, so by the first `Player.Update` the connection is long ready.
 - **`PlatformUserID`** is not in `assembly_valheim` or `assembly_utils` but in
   `valheim_Data/Managed/Splatform.dll` (struct `Splatform.PlatformUserID`), which `setup.sh` /
   `setup.ps1` now stage into `lib/` (`Splatform*.dll`). `new PlatformUserID(platform, userID)`
@@ -319,28 +338,83 @@ table brings next to such a pin is kept. The pin goes in through
 `UniversalPins.Add`, and `$msg_pin_added: <name>` goes to the top left with the pin's icon, as
 `DiscoverLocation` does.
 
-### Sharing: the write is the sync
+### Sharing: read what is new, write only what the table lacks
 
-`SharedMapTable.Sync` is `OnWrite` minus what a player would notice: `OnRead(..., showMessage:
-false)`, the non-flashing access check, `GetMapData`, `InvokeRPC("MapData")`, no message, no
-effect. Tables register in a `MapTable.Start` postfix; a dead entry is pruned on the next check.
+`SharedMapTable.Sync` is `OnWrite` minus what a player would notice and minus what is not
+needed: decompress `s_data` once, `AddSharedMapData` (the read) only when the data is new to
+this client, `GetMapData` + `InvokeRPC("MapData")` (the write) only when the table is out of step
+with this map, no message, no effect. Tables register in a `MapTable.Start` postfix; a dead entry
+is pruned on the next check.
 
-A 1s check (Player.Update postfix, local player) syncs at most **one** table per check, since each
-sync is a hitch. A table within `SyncRange` (64m) syncs when:
+**A write is the expensive half, and it is expensive for everyone**: the packing is a main-thread
+hitch for the writer, and the blob (the whole compressed exploration bitmap, hundreds of KB on a
+well-travelled map) then goes to the table's owner, to the server and on to every client that has
+the zone loaded, modded or not, where each modded one reads it. So reads and writes have
+separate triggers. A 1s check (Player.Update postfix, local player) handles at most **one** table
+per check. A table within `SyncRange` (64m):
 
-1. **Arrival**: it is not up to date for this visit. Beyond `SyncRange + 8m` it is forgotten, so
-   the next arrival syncs again; the margin keeps the edge from flickering.
-2. **A pin changed**: `AddPin`/`RemovePin(PinData)` postfixes on saved pins bump a generation
-   counter (not while a sync itself runs); a writable table behind the counter syncs.
-3. **Someone else wrote**: the ZDO's `DataRevision` moved and the data is not byte-for-byte what
-   this client last sent (the owner stores exactly the sent bytes, so our own write is recognised
-   and becomes the new baseline instead of triggering another write).
+- is **read** when its `DataRevision` differs from the one this client last read or wrote — on
+  arrival with new data, or when someone else wrote. Our own write moves the revision too once it
+  reaches the owner; the owner stores exactly the sent bytes, so a revision whose data is
+  byte-for-byte what we sent is taken as read (`Unread`).
+- is **written** on **arrival** (not up to date for this visit; beyond `SyncRange + 8m` a table
+  is forgotten, so the next arrival counts again, and the margin keeps the edge from flickering)
+  and when **a pin changed** (`AddPin`/`RemovePin(PinData)` postfixes on saved pins bump a
+  generation counter, not while a sync itself runs) — if the ward allows it, and only if `Lacks`
+  says the table is out of step: a cell explored here (`m_explored | m_exploredOthers`, copied
+  out as `int[]` words and compared against the blob's one-byte-per-cell bitmap straight out of
+  the array, a few ms) that the blob has not; a saved non-death pin with no table pin within 1m
+  (XZ, the table's own merge rule); or a table pin with no pin of ours within 1m, which — since
+  the table has been read — is one the player took off, and the write is what leaves it off.
 
-No table syncs more often than `MinInterval` (10s). A table behind a ward the player cannot use is
-read on arrival and on a foreign write, never written. Two players writing one table in the same
-second is last-writer-wins on the ZDO; since each write merges first, the loser's pins return on
-their next sync. A "pins only, keep my exploration private" switch is deliberately absent: the
-game's writer always merges the bitmap, and faking it needs BetterCartographyTable's transpiler.
+**Someone else's write never triggers a write back.** The first version did that, and two modded
+clients at one table wrote the map to each other every `MinInterval` for as long as they stood
+there: each write serialises the map in the writer's own pin order, so the bytes never matched
+"what I sent", each side saw a foreign write, read, and wrote again. Three players meant three
+blobs through the server every interval, and every client in the zone paid for each one. That
+was the lag. With the split the sequence converges: A arrives and writes, B reads it, and B
+writes only if B has something A did not — after which A reads and has nothing to add.
+
+No table syncs more often than `MinInterval` (30s; it was 10s, and an existing config keeps the
+old value). A table behind a ward the player cannot use is read, never written. Two players
+writing one table in the same second is last-writer-wins on the ZDO; since each write merges
+first, the loser's pins return on their next write. A "pins only, keep my exploration private"
+switch is deliberately absent: the game's writer always merges the bitmap, and faking it needs
+BetterCartographyTable's transpiler.
+
+### Broadcast: a pin goes to everyone the moment it is made
+
+`PinBroadcast` is the road that needs no table, on for as long as `AutoPins` is on and its
+`Share` setting (default on) is. Two routed RPCs, registered per session in a `Game.Start`
+postfix:
+
+- **`OdinsMissingPatch_Pins`** carries a list of pins: version int, an "announce" bool, a
+  count, then category int, name and position per pin. `AutoPins.TryPin` sends one to
+  `Everybody` right after it has added a pin of its own (never for one it received, so nothing
+  echoes). Since `Everybody` is handled locally too, the handler drops a call whose sender is
+  `m_id`. What arrives goes through `AutoPins.Receive`: the receiver's own category switch
+  decides whether it wants the category at all, its own icon setting picks the type, and then
+  the same `Place` as a local find - the merge radius, the dismissed record and `PinSpacing` all
+  apply - so a pin the receiver removed by hand, or has a hand-placed pin next to, is not added.
+  A live pin is announced in the top left like a find of one's own (`ShowMessage`); a catch-up
+  is not, since it can be dozens at once.
+- **`OdinsMissingPatch_PinsRequest`** has no payload. `RequestOnce` sends it to `Everybody` from
+  the 3s sweep, once per `ZRoutedRpc` instance - so once per session, and only once sharing is
+  on, which covers a player who switches it on mid-game. Every modded client that gets it
+  answers the sender alone with all its saved universal pins, announce off. A newcomer with N
+  modded peers gets N lists; the merge radius makes them one.
+
+Only category, name and position travel: the owner and author are the receiver's to set
+(`UniversalPins.Add`), the tick state stays local (the mined-out sweep ticks it again where the
+receiver comes by). A pin received adds through `AddPin`, so `SharedMapTable`'s generation
+counter moves and a table in range is written on the next check - which is right, the table
+lacks it - and three players at one table all seeing the same broadcast each check `Lacks` first,
+so only the first of them writes.
+
+What the broadcast does not do: reach a player without the mod (the tables do), reach a player
+who was offline and never asks (the request goes out once per session, so a pin made while they
+were away is a table's job), carry a removal (a removal is per character by design), or carry
+`AutoPins` pins to a player whose `AutoPins` is off (`Sharing` is `On && Share`, on both ends).
 
 ### Looks: colour by biome, hide by zoom or by toggle
 
@@ -391,8 +465,9 @@ left free for the player's own pins.
 | File | Holds |
 | --- | --- |
 | `src/UniversalPins.cs` | owner, author, `IsUniversal`, `TryGetCategory`, `Find`, `Add`, `Normalize`, the dismissed record, `UndoClaims`, `KeepOnTableRead`, `RecordRemoval` |
-| `src/Tweaks/SharedMapTable.cs` | section "Shared Map Table": `SyncRange` (64), `MinInterval` (10s); the registry, the check, the silent write |
-| `src/Tweaks/AutoPins.cs` | section "Auto Pins": `Dungeons`/`Ore`/`Places`, `DiscoverRange` (40), `PinSpacing` (10), the three icons, `PlaceList`, `ExtraOre` (`Softtissue`), `SkipOre` (`TinOre`), `MinedOut`, `ShowMessage`; the sweep, the place rules, the ore strike, the mined-out check |
+| `src/Tweaks/SharedMapTable.cs` | section "Shared Map Table": `SyncRange` (64), `MinInterval` (30s); the registry, the check, `Unread`, `Lacks`, the silent read and write |
+| `src/Tweaks/AutoPins.cs` | section "Auto Pins": `Dungeons`/`Ore`/`Places`, `DiscoverRange` (40), `PinSpacing` (10), the three icons, `PlaceList`, `ExtraOre` (`Softtissue`), `SkipOre` (`TinOre`), `MinedOut`, `ShowMessage`, `Share`; the sweep, the place rules, the ore strike, the mined-out check, `Receive` |
+| `src/PinBroadcast.cs` | the two routed RPCs: `Send` (one pin to everybody), `RequestOnce` (ask everybody once per session), the handlers, the per-session registration |
 | `src/Tweaks/PinLooks.cs` | section "Pin Looks": a colour per biome, a zoom for dungeons, ore and places, `MapToggles` and `ShowDungeons`/`ShowOre`/`ShowPlaces`; the tint, the large map's toggles |
 | `src/Tweaks/DeathPins.cs` | section "Death Pins": `RemoveWithGrave`, `OnlyWithGrave`; the grave registry, the sweep, the no-grave check |
 | `src/Dev/MapCommands.cs` | Debug only: `omp_locations [filter]` (every `ZoneLocation`: name, biome, interior, game icon, discover label, entrance text, the place rule it falls under — also to the BepInEx log), `omp_pins`, `omp_pins_forget`, `omp_pins_clear` |
@@ -417,8 +492,11 @@ Built on Linux in Debug and Release; nothing below has been seen running. In ord
    does (the prefab-name fallback `Utils.GetPrefabName` covers a missing proxy).
 3. **Two clients on a local host**: A places a table, B walks up, both maps merge without a click;
    a table under B's ward is read but not written by A; the arrival hitch is no worse than a
-   manual write; standing next to a table does not write every `MinInterval` (the own-write
-   check).
+   manual write; two players standing next to a table do **not** keep writing it every
+   `MinInterval` (watch the BepInEx log for the game's `Compressed map data:` line, one per
+   write; the first version looped here and lagged every client in the zone); walking in and out
+   of range at a base with nothing new explored writes nothing; a pin placed by hand, and one
+   removed, reach the table within `MinInterval`.
 4. **Pins**: a burial chamber is pinned once with the game's name, entering does not pin again,
    B gets it through a table at the same position; striking copper pins "Copper" once, tin
    "Tin", a lava leviathan "Flametal", a Mistlands giant helmet "Iron"; silver is not pinned
@@ -445,6 +523,14 @@ Built on Linux in Debug and Release; nothing below has been seen running. In ord
    category on the large map and the minimap and survives a restart; the original toggle still
    sets the public position and a gamepad press flips only the original; walking up to a
    vegvisir ruin adds no pin (Charred Fortress included).
+8. **Broadcast (two clients on a local host, then on a dedicated server without the mod)**: A
+   strikes copper and B, anywhere in the world, gets "Copper" in the top left and the pin on the
+   map at once, coloured and toggled like B's own; A gets no second message and no duplicate
+   from its own broadcast; B with `Ore` off gets nothing; B with a hand-placed pin at the
+   crypt A found gets no auto pin there; a pin B removed by hand does not come back when A
+   finds the place again. C logs in later: A's and B's pins are on C's map a few seconds after
+   spawning, without a message, and A and B get nothing back. A vanilla client on the same
+   server sees no error in its log. Switching `Share` on mid-game triggers the request once.
 
 Known limits: if the arrival hitch is noticed, the
 blob can be built off the main thread (copy `m_explored`/`m_exploredOthers`, pack and compress on

@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
+
+- Auto pins reach everyone at once: a pin you get appears on the map of every other player
+  online that moment, and when you join, their pins appear on yours — no map table needed.
+  `Share` in the Auto Pins section turns it off. Players without the mod still get the pins
+  from a table.
+- The inventory and chest buttons show their icons again when the mod was installed through a mod
+  manager that unpacks the icons next to the DLL instead of into their folder (Gale does).
+- Shared map tables no longer lag everyone: two players near one table kept writing the map to
+  each other every ten seconds, and every write sends the whole map to everyone in the area. A
+  table is now written only when it is actually missing something of yours, never just because
+  someone else wrote to it, and at most every thirty seconds (`MinInterval`; an existing config
+  keeps its old value, so raise it by hand or delete the line).
 
 ## 0.3.0
 

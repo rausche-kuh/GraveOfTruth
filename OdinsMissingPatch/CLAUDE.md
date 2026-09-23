@@ -21,8 +21,9 @@ write the character.
 | `src/InventorySorter.cs`   | Merge-and-sort of an `Inventory` in place, from a given row down, around items a caller keeps.                                                                                                       |
 | `src/MaterialOrder.cs`     | The crafting tree derived from `ObjectDB`: which family a material belongs to and how deep it lies.                                                                                                  |
 | `src/UniversalPins.cs`     | Map pins that belong to nobody (a fixed owner, an `OdinsMissingPatch_<category>` author): the identity, adding, the removed-pin record, and the patches that keep them through a table read and turn a claim into a tick. Used by AutoPins, SharedMapTable and PinLooks. |
+| `src/PinBroadcast.cs`      | The routed RPCs that hand an auto pin to every player online the moment it is made, and that give a joining player everyone's pins once. Sends for AutoPins, receives into it.                   |
 | `src/Translations.cs`      | Hands `assets/translations.csv` to the game's localization on every language setup.                                                                                                                  |
-| `assets/icons/`            | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL.                                                                                                                            |
+| `assets/icons/`            | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. Gale flattens the folder on install, so `PanelButtons.Icon` looks in `icons/` and then beside the DLL.                     |
 | `assets/translations.csv`  | Every word the mod shows, one row per `$omp_` token, one column per language                                                                                                                         |
 | `package/`                 | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`).                                                           |
 

@@ -15,7 +15,8 @@ namespace OdinsMissingPatch
     /// deposits you strike, and places without an interior (fuling villages, tar pits, dragon
     /// eggs, Dvergr excavations, ...). Each is an ordinary map pin with a vanilla
     /// icon and the game's own name for the place, made universal (<see cref="UniversalPins"/>) so
-    /// a map table hands it to everyone exactly once. Right click removes one for good.
+    /// a map table hands it to everyone exactly once - and, with Share on, sent to every player
+    /// online the moment it is made (<see cref="PinBroadcast"/>). Right click removes one for good.
     /// <para>
     /// What counts is read off the game's own data rather than a list of names, so a new biome's
     /// places come in without a change here: a dungeon is a location with an interior, a place is
@@ -83,6 +84,7 @@ namespace OdinsMissingPatch
         private ConfigEntry<string> skipOre;
         private ConfigEntry<bool> showMessage;
         private ConfigEntry<MinedOut> minedOut;
+        private ConfigEntry<bool> share;
 
         // Parsed from placeList: prefab name -> the pin's name, or null for "the game's label".
         private Dictionary<string, string> placeNames = new Dictionary<string, string>();
@@ -141,6 +143,11 @@ namespace OdinsMissingPatch
                 "map for good, Keep leaves it as it was.");
             showMessage = config.Bind(Section, "ShowMessage", true,
                 "Say so in the top left corner when a pin is added, the way the game does for a boss altar.");
+            share = config.Bind(Section, "Share", true,
+                "Send every pin added here to every player online the moment it is made, and take " +
+                "the pins they send, without a map table in between; on joining, ask everyone for " +
+                "theirs once. Only players with the mod take part, and each applies their own " +
+                "settings to what they get. Off, the pins travel on map tables only.");
             placeList.SettingChanged += (sender, args) => ParsePlaces();
             ParsePlaces();
             extraOre.SettingChanged += (sender, args) => ForgetOre();
@@ -179,9 +186,33 @@ namespace OdinsMissingPatch
             placeNames = parsed;
         }
 
+        /// <summary>Whether pins go out to and come in from the other players right away.</summary>
+        internal bool Sharing => On && share.Value;
+
         private static PinType Icon(ConfigEntry<PinType> entry)
         {
             return Array.IndexOf(AllowedIcons, entry.Value) >= 0 ? entry.Value : (PinType)entry.DefaultValue;
+        }
+
+        /// <summary>This client's icon for a category, and whether it wants that category at all.</summary>
+        private bool Wants(Category category, out PinType type)
+        {
+            switch (category)
+            {
+                case Category.Dungeon:
+                    type = Icon(dungeonIcon);
+                    return dungeons.Value;
+                case Category.Ore:
+                    type = Icon(oreIcon);
+                    return ore.Value;
+                case Category.Place:
+                    type = Icon(placeIcon);
+                    return places.Value;
+                default:
+                    // Portals are not pinned yet, by anyone.
+                    type = PinType.Icon4;
+                    return false;
+            }
         }
 
         private bool InRange(Vector3 origin, Vector3 pos)
@@ -214,10 +245,34 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
-        /// Pins pos unless a universal pin of the category is already there - whoever put it
-        /// there - the player removed one there before, or some other pin is close by.
+        /// Pins a place this client found itself, and tells the other players about it.
         /// </summary>
         private void TryPin(Category category, Vector3 pos, string name, PinType type)
+        {
+            if (Place(category, pos, name, type, showMessage.Value))
+            {
+                PinBroadcast.Send(category, pos, name);
+            }
+        }
+
+        /// <summary>
+        /// A pin another player made, sent to us: taken under this client's own switches and icon,
+        /// and never sent on. A live one is announced like a find of our own; a catch-up is not.
+        /// </summary>
+        internal void Receive(Category category, Vector3 pos, string name, bool announce)
+        {
+            if (Wants(category, out PinType type))
+            {
+                Place(category, pos, name, type, announce && showMessage.Value);
+            }
+        }
+
+        /// <summary>
+        /// Pins pos unless a universal pin of the category is already there - whoever put it
+        /// there - the player removed one there before, or some other pin is close by. True when
+        /// a pin was added.
+        /// </summary>
+        private bool Place(Category category, Vector3 pos, string name, PinType type, bool announce)
         {
             Minimap map = Minimap.instance;
             Player player = Player.m_localPlayer;
@@ -225,14 +280,15 @@ namespace OdinsMissingPatch
                 || UniversalPins.Find(map, pos, category) != null || UniversalPins.IsDismissed(category, pos)
                 || NearOtherPin(map, pos))
             {
-                return;
+                return false;
             }
             Minimap.PinData pin = UniversalPins.Add(map, pos, category, type, name);
-            if (showMessage.Value)
+            if (announce)
             {
                 player.Message(MessageHud.MessageType.TopLeft,
                     string.IsNullOrEmpty(name) ? "$msg_pin_added" : "$msg_pin_added: " + name, 0, pin.m_icon);
             }
+            return true;
         }
 
         // --- locations ------------------------------------------------------------------------
@@ -724,6 +780,7 @@ namespace OdinsMissingPatch
                     return;
                 }
                 nextSweep = Time.time + SweepInterval;
+                PinBroadcast.RequestOnce();
                 Minimap map = Minimap.instance;
                 Vector3 origin = __instance.transform.position;
                 // Inside a dungeon everything is 5000m below; nothing to pin from up there.

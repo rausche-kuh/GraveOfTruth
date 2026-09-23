@@ -76,12 +76,14 @@ because I want them, not because I can argue they are neutral:
   Pockets**, once the boss you choose has fallen in that world. Wider Pockets waits for the Elder
   instead of Moder by default; Deeper Pockets keeps the Queen.
 - **Shared map table** — come within 64m of a cartography table and your map is written onto it
-  and its map onto yours, silently, with no click. Again when a pin of yours changes nearby or
-  someone else has written to it, never more than every ten seconds.
+  and its map onto yours, silently, with no click. It is read again whenever someone else has
+  written to it, and written again when a pin of yours changes nearby — only when the table is
+  actually missing something of yours, and never more than every thirty seconds.
 - **Auto pins** — dungeon and cave entrances, ore deposits you strike (not tin, which is
   everywhere; soft tissue from the Mistlands giants counts) and places (fuling villages and
   other ruined settlements, tar pits, dragon eggs, Dvergr excavations and watchtowers, ...)
-  get an ordinary map pin when you come within 40m.
+  get an ordinary map pin when you come within 40m. Every pin you get appears on the map of
+  every other player online at that moment, and when you join, their pins appear on yours.
 - **Pin looks** — those pins are coloured by their biome, and ore and place pins hide when the
   large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
   other players", show or hide dungeon, ore and place pins.
@@ -118,9 +120,12 @@ whoever is nearest, so a fire only a modless player stands by burns down as usua
 map table** writes a table exactly as its Write button does, and never one behind a ward you
 cannot use.
 
-Auto pins travel on map tables in the game's own format, so a player without the mod reads them
-from a table as ordinary shared pins. Removing one is yours alone: other players with the mod keep
-theirs and bring it back to the table.
+Auto pins go straight to every player with the mod who is online, and a player who joins gets
+everyone's once (`Share`, on by default; off, they wait for a table). Each player takes them under
+their own settings, so a category you switched off never shows up. They travel on map tables in
+the game's own format too, so a player without the mod reads them from a table as ordinary shared
+pins. Removing one is yours alone: other players with the mod keep theirs and bring it back to the
+table.
 
 Two caveats. Client-side range tweaks reach only you: a player without the mod has vanilla range
 at the same bench and sees mist close in at the vanilla distance. And **keep gear on death** goes

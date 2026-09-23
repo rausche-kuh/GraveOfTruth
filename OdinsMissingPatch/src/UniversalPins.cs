@@ -38,6 +38,8 @@ namespace OdinsMissingPatch
 
         private static readonly string[] CategoryIds = { "dungeon", "ore", "place", "portal" };
 
+        internal static int CategoryCount => CategoryIds.Length;
+
         /// <summary>The pins of one category are one pin when they are this close (XZ).</summary>
         internal static float MergeRadius(Category category)
         {

@@ -8,8 +8,9 @@
 #>
 [CmdletBinding()]
 param(
-    # Mods to deploy. Empty means all of them.
-    [Parameter(ValueFromRemainingArguments)]
+    # Mods to deploy. Empty means all of them. Position 0 keeps bare arguments here - without it
+    # PowerShell would hand the first one to -Configuration.
+    [Parameter(Position = 0, ValueFromRemainingArguments)]
     [string[]]$Mods,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',

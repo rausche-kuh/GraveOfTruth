@@ -12,11 +12,17 @@ namespace OdinsMissingPatch
     /// send - done silently: no message, no write effect, and never on a table behind a ward you
     /// may not use (that one is only read).
     /// <para>
-    /// A table is synced when you arrive within SyncRange of it, again when a pin of yours
-    /// changes while you are there, and again when someone else has written to it, but never
-    /// more often than MinInterval: every write costs the same hitch as a manual one, since the
-    /// game packs its whole exploration bitmap each time. Leaving the range forgets the table,
-    /// so the next arrival syncs again.
+    /// Reads and writes are kept apart, because a write is expensive for everyone: the game packs
+    /// the whole exploration bitmap (a main-thread hitch for the writer) and the blob then travels
+    /// through the server to every client in the zone. So a table is <b>read</b> whenever it holds
+    /// data this client has not read yet - on arrival, or when someone else wrote to it - and
+    /// <b>written</b> only on arrival and when a pin of yours changes while you are there, and
+    /// even then only when the table is actually out of step with your map (an explored cell or
+    /// a saved pin it lacks, or a pin you took off). Someone else's write never causes a write back: that would make two clients
+    /// at one table pass the map to each other forever, since each write serialises the map in
+    /// its own pin order and so never matches byte for byte. Nothing happens more often than
+    /// MinInterval per table, and leaving the range forgets the table, so the next arrival
+    /// syncs again.
     /// </para>
     /// </summary>
     internal sealed class SharedMapTable : Tweak
@@ -30,6 +36,9 @@ namespace OdinsMissingPatch
 
         /// <summary>A table counts as left this far beyond SyncRange, so its edge does not flicker.</summary>
         private const float LeaveMargin = 8f;
+
+        /// <summary>The table blob: version int, cell count int, then one byte per cell.</summary>
+        private const int BitmapOffset = 8;
 
         private ConfigEntry<float> syncRange;
         private ConfigEntry<float> minInterval;
@@ -46,9 +55,10 @@ namespace OdinsMissingPatch
             syncRange = config.Bind(Section, "SyncRange", 64f, new ConfigDescription(
                 "Metres from a table within which it syncs. 64 is one zone.",
                 new AcceptableValueRange<float>(5f, 256f)));
-            minInterval = config.Bind(Section, "MinInterval", 10f, new ConfigDescription(
-                "Seconds between two syncs of the same table. Each sync is as heavy as writing " +
-                "the table by hand, so a very low value can make the game stutter near a table.",
+            minInterval = config.Bind(Section, "MinInterval", 30f, new ConfigDescription(
+                "Seconds between two syncs of the same table. A write is as heavy as writing the " +
+                "table by hand and sends the whole map to everyone in the zone, so a low value " +
+                "makes the game stutter for everybody near a table.",
                 new AcceptableValueRange<float>(1f, 600f)));
         }
 
@@ -56,11 +66,12 @@ namespace OdinsMissingPatch
         {
             /// <summary>Synced since the player last came into range.</summary>
             public bool UpToDate;
+            /// <summary>The data revision this client last read (or wrote itself).</summary>
             public uint Revision;
             public float LastSync = float.NegativeInfinity;
-            /// <summary>The pin generation the last sync wrote.</summary>
+            /// <summary>The pin generation the last sync saw.</summary>
             public int Generation;
-            /// <summary>What the last sync sent, to tell our own write from someone else's.</summary>
+            /// <summary>What the last write sent, to tell our own write from someone else's.</summary>
             public byte[] Sent;
         }
 
@@ -100,26 +111,28 @@ namespace OdinsMissingPatch
                 {
                     continue;
                 }
-                bool canWrite = PrivateArea.CheckAccess(table.transform.position, 0f, flash: false);
-                bool behind = canWrite && state.Generation != generation;
-                if (state.UpToDate && !behind && !WrittenByOthers(table, state))
+                ZDO zdo = table.m_nview.GetZDO();
+                bool read = Unread(zdo, state);
+                bool write = (!state.UpToDate || state.Generation != generation)
+                    && PrivateArea.CheckAccess(table.transform.position, 0f, flash: false);
+                if (!read && !write)
                 {
+                    state.UpToDate = true;
                     continue;
                 }
-                Sync(table, player, state, canWrite);
+                Sync(table, state, zdo, read, write);
                 // One table per check: each sync is a hitch of its own.
                 return;
             }
         }
 
         /// <summary>
-        /// Whether the table changed since this player last synced it. Our own write changes the
+        /// Whether the table holds data this client has not read. Our own write changes the
         /// revision too, once it reaches the table's owner, so a revision change whose data is
-        /// exactly what we sent is taken as the new baseline instead.
+        /// exactly what we sent is taken as read instead.
         /// </summary>
-        private static bool WrittenByOthers(MapTable table, TableState state)
+        private static bool Unread(ZDO zdo, TableState state)
         {
-            ZDO zdo = table.m_nview.GetZDO();
             if (zdo.DataRevision == state.Revision)
             {
                 return false;
@@ -150,36 +163,132 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
-        /// MapTable.OnWrite without the parts a player would notice: the read runs without its
-        /// message, the ward is asked without flashing, and nothing is printed or played.
+        /// MapTable.OnWrite without the parts a player would notice, and without the parts that
+        /// are not needed: the read only when the data is new to us, the write only when the
+        /// table lacks something of ours, no message, no effect.
         /// </summary>
-        private static void Sync(MapTable table, Player player, TableState state, bool canWrite)
+        private static void Sync(MapTable table, TableState state, ZDO zdo, bool read, bool write)
         {
-            ZDO zdo = table.m_nview.GetZDO();
-            syncing = true;
-            try
+            byte[] data = zdo.GetByteArray(ZDOVars.s_data);
+            if (data != null)
             {
-                table.OnRead(null, player, null, showMessage: false);
-                if (canWrite)
+                data = Utils.Decompress(data);
+            }
+            if (read && data != null)
+            {
+                syncing = true;
+                try
                 {
-                    byte[] current = zdo.GetByteArray(ZDOVars.s_data);
-                    if (current != null)
-                    {
-                        current = Utils.Decompress(current);
-                    }
-                    ZPackage data = table.GetMapData(current);
-                    state.Sent = data.GetArray();
-                    table.m_nview.InvokeRPC("MapData", data);
+                    Minimap.instance.AddSharedMapData(data);
+                }
+                finally
+                {
+                    syncing = false;
                 }
             }
-            finally
+            state.Revision = zdo.DataRevision;
+            if (write && (data == null || Lacks(data)))
             {
-                syncing = false;
+                ZPackage package = table.GetMapData(data);
+                state.Sent = package.GetArray();
+                table.m_nview.InvokeRPC("MapData", package);
             }
             state.UpToDate = true;
-            state.Revision = zdo.DataRevision;
             state.LastSync = Time.time;
             state.Generation = generation;
+        }
+
+        /// <summary>
+        /// Whether the decompressed table blob is missing something this map has: a cell explored
+        /// here (by us or read from another table) that the table has not, or a saved non-death
+        /// pin without a table pin within 1m of it, which is the table's own merge rule. A blob
+        /// that does not parse, or of a size the game would refuse, counts as lacking.
+        /// </summary>
+        private static bool Lacks(byte[] data)
+        {
+            Minimap map = Minimap.instance;
+            int cells = map.m_explored.Length;
+            if (data.Length < BitmapOffset + cells)
+            {
+                return true;
+            }
+            ZPackage package = new ZPackage(data);
+            int version = package.ReadInt();
+            if (package.ReadInt() != cells)
+            {
+                return true;
+            }
+            // The bitmap is one byte per cell, so it is compared straight out of the array.
+            int[] explored = new int[(cells + 31) / 32];
+            int[] others = new int[explored.Length];
+            map.m_explored.CopyTo(explored, 0);
+            map.m_exploredOthers.CopyTo(others, 0);
+            for (int word = 0; word < explored.Length; word++)
+            {
+                int bits = explored[word] | others[word];
+                if (bits == 0)
+                {
+                    continue;
+                }
+                int offset = BitmapOffset + word * 32;
+                for (int bit = 0; bit < 32; bit++)
+                {
+                    if ((bits & (1 << bit)) != 0 && data[offset + bit] == 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+            if (version < (int)Version.SharedMap.Pins)
+            {
+                return true;
+            }
+            package.SetPos(BitmapOffset + cells);
+            int count = package.ReadInt();
+            List<Vector3> positions = new List<Vector3>(count);
+            for (int i = 0; i < count; i++)
+            {
+                package.ReadLong();
+                package.ReadString();
+                positions.Add(package.ReadVector3());
+                package.ReadInt();
+                package.ReadBool();
+                if (version >= (int)Version.SharedMap.PinsAuthor)
+                {
+                    package.ReadString();
+                }
+            }
+            bool[] onTable = new bool[count];
+            foreach (Minimap.PinData pin in map.m_pins)
+            {
+                if (!pin.m_save || pin.m_type == Minimap.PinType.Death)
+                {
+                    continue;
+                }
+                bool onMap = false;
+                for (int i = 0; i < count; i++)
+                {
+                    if (Utils.DistanceXZ(positions[i], pin.m_pos) < 1f)
+                    {
+                        onTable[i] = true;
+                        onMap = true;
+                    }
+                }
+                if (!onMap)
+                {
+                    return true;
+                }
+            }
+            // The table was read, so a table pin this map does not have is one the player took
+            // off: the write is what leaves it off the table.
+            for (int i = 0; i < count; i++)
+            {
+                if (!onTable[i])
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>MapTable keeps no list of itself, so every one that starts is put on ours.</summary>

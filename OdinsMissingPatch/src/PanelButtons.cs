@@ -266,8 +266,10 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
-        /// The icon named by a PNG in assets/icons/ beside the DLL, loaded once. Null when the file
-        /// is missing or unreadable, which leaves the button blank but working.
+        /// The icon named by a PNG shipped with the DLL, loaded once. Null when the file is
+        /// missing or unreadable, which leaves the button blank but working.
+        /// The zip carries the PNGs in icons/, but a mod manager may flatten that folder into the
+        /// plugin directory on install (Gale does), so both places are tried.
         /// </summary>
         internal static Sprite Icon(string name)
         {
@@ -279,8 +281,8 @@ namespace OdinsMissingPatch
             try
             {
                 string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                string path = Path.Combine(Path.Combine(dir, "icons"), name + ".png");
-                if (File.Exists(path))
+                string path = IconPath(dir, name);
+                if (path != null)
                 {
                     Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                     if (LoadPng(texture, File.ReadAllBytes(path)))
@@ -292,7 +294,8 @@ namespace OdinsMissingPatch
                 }
                 else
                 {
-                    Debug.LogWarning("[OdinsMissingPatch] icon missing: " + path);
+                    Debug.LogWarning("[OdinsMissingPatch] icon missing: " + name + ".png, looked in "
+                        + Path.Combine(dir, "icons") + " and " + dir);
                 }
             }
             catch (Exception e)
@@ -301,6 +304,24 @@ namespace OdinsMissingPatch
             }
             icons[name] = sprite;
             return sprite;
+        }
+
+        /// <summary>
+        /// The first place the named PNG exists: icons/ under the DLL's directory, then the
+        /// directory itself. Null when it is in neither.
+        /// </summary>
+        private static string IconPath(string dir, string name)
+        {
+            string file = name + ".png";
+            string[] candidates = { Path.Combine(Path.Combine(dir, "icons"), file), Path.Combine(dir, file) };
+            foreach (string candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+            return null;
         }
 
         private static MethodInfo loadImage;
