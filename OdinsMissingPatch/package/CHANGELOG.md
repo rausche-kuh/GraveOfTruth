@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fast portals: walking into a dungeon or cave entrance, and back out, is now instant — no black
+  screen and no wait. The name of the place still shows as before. A setting turns it off, and
+  then the door fades like a portal.
+
 ## 0.2.3
 
 - Pocket upgrades: Haldor now offers Wider Pockets, the first extra inventory row, once the Elder

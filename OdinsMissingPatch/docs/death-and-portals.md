@@ -14,6 +14,26 @@ FastPortals, KeepGearOnDeath.
   the screen is up; the tweak remembers that itself. `Player.TeleportTo` refuses a new trip while
   `m_teleportCooldown < 2f`, counted from the end of the last one - left alone, it is what keeps
   you from bouncing straight back through the portal you arrived at.
+- A dungeon or cave entrance is a `Teleport` (not `TeleportWorld`): `Interact` - also reached
+  from its `OnTriggerEnter` - calls `TeleportTo(..., distantTeleport: false)`, then counts the
+  `PortalDungeonIn/Out` stat by `InInterior()` and shows `m_enterText` ("Caves" and the like)
+  through `ShowBiomeFoundMsg`. Both read the player *before* the move, so the move must not
+  happen inside `TeleportTo` or the stat flips. A local trip has no eight second minimum: past
+  `2f` it only waits for `IsAreaReady`, and a missing floor sends you straight back with
+  `$msg_portal_blocked`. The interior sits ~5000m above the entrance in the same zone;
+  `DungeonGenerator` spawns its rooms asynchronously and marks the zone with `SetLoadingInZone`
+  meanwhile, which `IsZoneLoaded` (and so `IsAreaReady`) honours. A ready area still does not
+  promise a floor: a dungeon whose saved room list names a room `DungeonDB` does not have
+  (`Missing room:<hash>` in the game log; seen for `forestcrypt_entrance`, hash -453332780, in a
+  DeepNorth world) spawns without it, and when that is the entrance the door blocks every time,
+  vanilla included. `InstantDungeonDoors` therefore also runs
+  `ZoneSystem.FindFloor` on the target itself - the same raycast the trip ends on - and only
+  then jumps the timer to `2f` and returns `float.MaxValue` from `GetFadeDuration`, which keeps
+  the screen's alpha at zero until the next `FixedUpdate` ends the trip. A door trip without its
+  floor is never hurried, not even by the black screen jump, and logs how long the floor took
+  once it appears. The camera needs no help: `GameCamera.UpdateBaseOffset`
+  snaps its smoothed player position across any jump over 20m, and `UpdateTeleport` forces the
+  instant environment switch itself.
 - Death and the inventory is `Player.CreateTombStone()`, called from `Player.OnDeath` (owner
   only) and skipped entirely when the inventory is empty or the world has
   `GlobalKeys.DeathKeepInventory`. It reads three more world modifier keys: unless

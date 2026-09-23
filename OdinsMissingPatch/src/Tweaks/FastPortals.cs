@@ -1,4 +1,5 @@
 using BepInEx.Configuration;
+using BepInEx.Logging;
 using HarmonyLib;
 
 namespace OdinsMissingPatch
@@ -12,12 +13,22 @@ namespace OdinsMissingPatch
     /// The one wait the game needs is kept as it is: a distant teleport still waits for the
     /// target area to load, and still gives it the same seven seconds to produce a floor before
     /// it drops you on the terrain height instead.
+    ///
+    /// A dungeon door is the same trip with distantTeleport off, and with InstantDungeonDoors
+    /// it has no black screen at all when the inside is already loaded: the screen never starts
+    /// to darken and the move happens on the next physics step. Everything else the door does
+    /// is left alone - the location name it shows and the stat it counts run in Teleport.Interact
+    /// after TeleportTo returns, before the player has moved, and the instant environment switch
+    /// is part of the move itself.
     /// </summary>
     internal sealed class FastPortals : Tweak
     {
         internal static readonly FastPortals Instance = new FastPortals();
 
         private FastPortals() { }
+
+        private static readonly ManualLogSource Log =
+            BepInEx.Logging.Logger.CreateLogSource(OdinsMissingPatchPlugin.NAME);
 
         /// <summary>
         /// The game's minimum trip time: the timer has to pass it before the floor is looked for.
@@ -26,7 +37,14 @@ namespace OdinsMissingPatch
         /// </summary>
         private const float VanillaMinimumTrip = 8f;
 
+        /// <summary>
+        /// The timer UpdateTeleport has to pass before it moves you - the whole wait of a dungeon
+        /// door, which never has the eight second minimum.
+        /// </summary>
+        private const float VanillaMoveDelay = 2f;
+
         private ConfigEntry<float> fadeSeconds;
+        private ConfigEntry<bool> instantDungeonDoors;
 
         internal override string Section => "Fast Portals";
 
@@ -40,6 +58,36 @@ namespace OdinsMissingPatch
                 "Seconds the screen takes to fade to black when you step into a portal, and to " +
                 "fade back in on the other side. 1 is vanilla.",
                 new AcceptableValueRange<float>(0f, 5f)));
+            instantDungeonDoors = config.Bind(Section, "InstantDungeonDoors", true,
+                "Going through a dungeon or cave entrance is instant, without the black screen, " +
+                "whenever the inside is already loaded (it nearly always is). Off means the door " +
+                "fades like a portal, over FadeSeconds.");
+        }
+
+        /// <summary>
+        /// A dungeon door trip that can finish right now: the local teleport a Teleport starts
+        /// (not a portal's distant one) into a zone that is loaded with every object in it
+        /// spawned, with the floor under the exit already there. The floor is checked on its own
+        /// because the area being ready does not guarantee it on the first frame, and a local
+        /// trip that moves you onto no floor is sent straight back ("portal blocked").
+        /// </summary>
+        private static bool IsInstantDoorTrip(Player player)
+        {
+            return Instance.On && Instance.instantDungeonDoors.Value
+                && IsDoorTrip(player)
+                && ZNetScene.instance != null && ZNetScene.instance.IsAreaReady(player.m_teleportTargetPos)
+                && HasFloor(player);
+        }
+
+        private static bool IsDoorTrip(Player player)
+        {
+            return player.m_teleporting && !player.m_distantTeleport;
+        }
+
+        /// <summary>The same raycast UpdateTeleport ends a trip on.</summary>
+        private static bool HasFloor(Player player)
+        {
+            return ZoneSystem.instance != null && ZoneSystem.instance.FindFloor(player.m_teleportTargetPos, out _);
         }
 
         /// <summary>
@@ -54,10 +102,40 @@ namespace OdinsMissingPatch
         [HarmonyPatch(typeof(Player), "UpdateTeleport")]
         private static class SkipTheWait
         {
+            private static bool waitedForFloor;
+
             private static void Prefix(Player __instance)
             {
+                if (!__instance.m_teleporting)
+                {
+                    waitedForFloor = false;
+                }
                 if (!Instance.On || !__instance.m_teleporting || __instance.m_teleportTimer >= VanillaMinimumTrip)
                 {
+                    return;
+                }
+                if (IsInstantDoorTrip(__instance))
+                {
+                    if (waitedForFloor)
+                    {
+                        Log.LogInfo(Instance.Section + ": the floor inside the door appeared after " +
+                            __instance.m_teleportTimer.ToString("0.00") + "s");
+                        waitedForFloor = false;
+                    }
+                    // The method adds this frame's dt before it compares, so this moves you and
+                    // then finds the floor in the same call, exactly as vanilla does at two
+                    // seconds.
+                    if (__instance.m_teleportTimer < VanillaMoveDelay)
+                    {
+                        __instance.m_teleportTimer = VanillaMoveDelay;
+                    }
+                    return;
+                }
+                if (IsDoorTrip(__instance) && !HasFloor(__instance))
+                {
+                    // Never hurry a door trip onto a missing floor: that is an instant "portal
+                    // blocked". Vanilla's two seconds run on until the floor turns up.
+                    waitedForFloor = true;
                     return;
                 }
                 Hud hud = Hud.instance;
@@ -96,7 +174,14 @@ namespace OdinsMissingPatch
                 {
                     fadingForTeleport = false;
                 }
-                if (Instance.On && fadingForTeleport)
+                if (IsInstantDoorTrip(player))
+                {
+                    // The fade moves alpha by dt / duration, so this keeps the screen clear for
+                    // the frame or two before the next physics step ends the trip; on arrival
+                    // there is nothing to fade back out.
+                    __result = float.MaxValue;
+                }
+                else if (Instance.On && fadingForTeleport)
                 {
                     __result = Instance.fadeSeconds.Value;
                 }

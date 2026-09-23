@@ -1,5 +1,8 @@
 # Odin's Missing Patch
 
+> **Warning:** this mod is developed heavily with the use of AI, and many of its ideas and even source
+> code is copied from other mods.
+
 The patch Odin forgot: my personal take on the quality of life changes Valheim should have shipped
 years ago, in one mod. Nothing needs a server install.
 
@@ -21,85 +24,57 @@ because I want them, not because I can argue they are neutral:
 ## What it does
 
 - **Station range** — scales a crafting station's build/craft/repair radius, and how far an
-  extension may stand from it, by a multiplier (2 by default). The station's own area circle is
-  recomputed from the same field, so what you see is what you get.
+  extension may stand from it, by a multiplier (2 by default).
 - **Comfort range** — widens the radius `Rested` counts furniture in, by the same kind of
-  multiplier, at the one call the game measures it in.
-- **Endless fuel** — tops the fuel back up on every campfire, hearth, torch, brazier and hot tub
-  after the game's own burn tick, so nothing that burns for light goes out.
+  multiplier.
+- **Endless fuel** — tops the fuel back up on every campfire, hearth, torch, brazier and hot tub,
+  so nothing that burns for light goes out.
 - **Mist clear range** — scales a demister's push radius (wisplight, wisp torch, anything else),
-  doubled by default. The mist is drawn from the same value, so the clearing really is wider.
+  doubled by default.
 - **Combat stamina** — drops the stamina cost of sprinting, jumping, swimming, sneaking, building,
   chopping, mining and swinging while nothing hostile is within 25m and nothing that has noticed
-  you is coming for you. Hostility is the game's own verdict, so a tame boar does not count and an
-  enemy hunting you from 40m out does. One switch per cost, and the radius is yours. Free swimming
-  means no drowning, since drowning starts at empty stamina.
-- **Instant comfort** — re-measures the comfort of where you sat down and grants `Rested`
-  immediately, instead of after the game's ten seconds of Resting. Everything else about resting
-  is unchanged: you still need the fire, wet and cold still block it.
+  you is coming for you. Free swimming means no drowning unless attacked, since drowning starts
+  at empty stamina.
+- **Instant comfort** — sitting down grants `Rested` immediately, instead of after the game's ten
+  seconds of Resting.
 - **Fireside healing** — folds `comfort level × 2` health into the game's own ten-second food
   regen tick while you are Resting.
 - **Fast portals** — ends the trip as soon as the screen is fully black and the far side has
-  loaded, instead of the game's flat eight seconds.
-- **Keep gear on death** — folds an item-type list (weapons, armour, ammo, tools, utility,
-  trinkets, consumables by default) into the two filters the game uses to fill your grave, so
-  those types stay in your inventory and stay equipped. Only on a world whose death penalty is
-  set to Casual, the lowest setting — on anything harsher it does nothing at all. Skill loss is
-  untouched.
+  loaded, instead of the game's flat eight seconds. Dungeon and cave entrances are instant, with
+  no black screen at all.
+- **Keep gear on death** — makes casual death penalty even weaker: an item-type list
+  (weapons, armour, ammo, tools, utility, trinkets, consumables by default) defines which stay
+  in your inventory and stay equipped.
 - **Area repair** — after a hammer swing lands, repeats the game's own repair on every damaged
-  piece within 10m, closest first. Each pays the full price — stamina, hammer durability, station
-  in range, ward access — so a swing stops when you run dry and picks up on the next. Hold
-  `Left Alt` for the single piece. Radius and key configurable.
-- **Nearby crafting** — while a craft, upgrade or build is being checked or paid for, the game's
-  three inventory lookups also see player-placed chests within 20m. Your backpack pays first, the
-  nearest chest pays the rest. The crafting panel counts them too: an amount a chest covers turns
-  yellow, and its tooltip splits carried from stored.
+  piece within 10m, closest first. Hold `Left Alt` for the single piece.
+- **Nearby crafting** — while a craft, upgrade or build is being checked or paid for, the game
+  also checks player-placed chests within 20m. Your backpack pays first, the nearest chest pays
+  the rest.
 - **Quick stack** — one key (`.`) pushes every carried stack into the nearest chest in range that
   already holds that item, merging into its stacks before taking a slot. Each chest that took
-  something glows with a count. Equipped items, the hotbar (a switch) and favourites stay —
+  something glows with a count. Equipped items, the hotbar (a switch) and favourites stay.
   `Alt`-click an item to make it a favourite.
 - **Chest favourites** — `Alt`-click an item inside an open chest to mark the chest for that kind
-  of item. Quick stack and Fill the chest's stacks put it there even when the chest holds none,
-  and the chests marked for an item are filled before those that merely hold one, so an emptied
-  chest keeps its job. A Clear favourites button in the chest panel lists what the chest is marked
-  for in its tooltip and wipes the marks in one click.
+  of item. Quick stack and Fill the chest's stacks put it there even when the chest holds none.
 - **Nearby fuel** — lets the four manual add-fuel interactions (fire, smelter, oven, shield
   generator) draw their one unit from a chest when your backpack has none.
 - **Add all** — `Shift` + Use on a fire, smelter, kiln, oven, cooking station, shield generator or
-  ballista sends the station's own add request once per unit, for as much as fits. Fuel, ore, food
-  and bolts come from your backpack first and the chests after. The hover text tells you the count
-  before you press.
-- **Auto repair** — on Use of a crafting station, walks your worn items and repairs each one that
-  station's own `CanRepair` accepts, instead of one per click of the repair button. Crafting skill
-  still rises with the wear mended.
+  ballista to fill up fuel, ore, food and bolts. Uses backpack first and the chests after.
+- **Auto repair** — on Use of a crafting station repairs all repairable items.
 - **Chest buttons** — replaces Take all and Stack all with five icon buttons placed beside the
-  panels rather than on them: **fill your stacks** from the chest (topping up what you already
-  carry, never starting a new stack), and, down the chest's side,
-  **take all**, **place all**, **fill the chest's stacks** and **sort the chest**. The two that put
-  things in skip worn gear, favourites and the hotbar (a switch). Off, and the game's two return.
-- **Inventory buttons** — **stack nearby** (quick stack by click, shown when no chest is open) and
-  **sort**, beside your inventory. The sort merges stacks and orders by kind, then name, then
-  quality, below the hotbar. Materials are ordered by what the game's own recipes say — an ore
-  next to its bar and what the bar builds, families in the order you meet them, everything a
-  portal refuses in one block at the end — so a modded material lands with its own kin instead of
-  under its initial. What you have equipped and your favourites stay in the slot you put them in,
-  and everything else is laid out around them.
+  panels rather than on them: **fill your stacks** from the chest, and, down the chest's side,
+  **take all**, **place all**, **fill the chest's stacks** and **sort the chest**.
+- **Inventory buttons** — stack nearby and **sort**, beside your inventory. The sort merges stacks
+  and orders by kind, then name, then quality, below the hotbar. What you have equipped and your
+  favourites stay in the slot you put them in, and everything else is laid out around them.
 - **Power picker** — adds a Forsaken powers ring to the radial menu, so you can pick a power
   without running to the sacrifice stone.
-- **Equip while running** — a hotbar press while sprinting equips the weapon, shield or armour
-  without you slowing down; vanilla drops the press until you stop. The equip takes its usual
-  time, attacks, jumps and dodges still interrupt it, and a crossbow still waits to reload.
-- **Auto shield** — drawing a one handed weapon raises a shield with it, so a sword pulled after
-  your bow does not leave you with nothing to block with. Only an empty off hand is filled: a
-  shield or a torch you are already holding stays. It picks the shield you marked as a favourite
-  first, then one on your hotbar, then the rest of your backpack, and raises it the way you would
-  have, taking its usual moment.
+- **Equip while running** — a hotbar press while sprinting still equips the weapon, shield or armour.
+- **Auto shield** — drawing a one handed weapon raises a shield with it. It picks the shield
+  you marked as a favourite first.
 - **Pocket upgrades** — Haldor sells the two extra inventory rows, **Wider Pockets** and **Deeper
   Pockets**, once the boss you choose has fallen in that world. Wider Pockets waits for the Elder
-  instead of Moder by default, so the first extra row arrives while a full backpack is still the
-  thing slowing you down; Deeper Pockets keeps the Queen. You still buy them from Haldor, at his
-  price, once per character. Either can be set to any boss, or to none at all to have it on the
-  shelf from the start.
+  instead of Moder by default; Deeper Pockets keeps the Queen.
 
 ## Configuration
 
@@ -156,7 +131,8 @@ on its own or want it server-enforced. **Do not run both of a pair.**
   counts an enemy that has noticed you, wherever it is.
 - Area repair does what
   [Venture Area Repair](https://thunderstore.io/c/valheim/p/VentureValheim/Venture_Area_Repair/)
-  does at a fixed 20m; here the radius and the single-repair key are settings.
+  does at a fixed 20m; here the radius and the single-repair key are settings. Azumatt's
+  [AzuAreaRepair](https://valheim.hexium.gg/mods/Azumatt/AzuAreaRepair) covers the same ground.
 - The chest tweaks and auto repair cover part of Zellds'
   [SmartCraft-Storage](https://thunderstore.io/c/valheim/p/Zellds/SmartCraftStorage/), which goes
   much further — stations that feed themselves, restocking, animal feeding. This one keeps every
@@ -165,6 +141,10 @@ on its own or want it server-enforced. **Do not run both of a pair.**
   [EquipGearWhileRunning](https://thunderstore.io/c/valheim/p/blacks7ar/EquipGearWhileRunning/) got
   to first, and that one is a drop-in with nothing to configure; here it is a switch beside the
   rest.
+- Auto shield follows Vapok's
+  [ShieldMeBruh](https://thunderstore.io/c/valheim/p/Vapok/ShieldMeBruh/).
+- Pocket upgrades follows chooweey's
+  [EarlyHaldorPockets](https://valheim.hexium.gg/mods/chooweey/EarlyHaldorPockets).
 
 ## Recommendations
 

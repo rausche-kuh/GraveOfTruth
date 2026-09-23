@@ -55,7 +55,8 @@ player's own save).
   is folded into the tick's own `Heal` call so it shows as one number, and is healed on its own when
   no food is eaten and the game heals nothing.
 - **Fast portals** — a portal trip ends as soon as the screen is black and the other side is
-  loaded, not after the fixed eight seconds; the fade is shorter too.
+  loaded, not after the fixed eight seconds; the fade is shorter too. Dungeon doors
+  (`InstantDungeonDoors`, on by default) skip the black screen entirely when the inside is loaded.
 - **Keep gear on death** — items of a configurable list of types (weapons, armour, ammo, tools,
   utility, trinkets, consumables by default) stay in the inventory and stay equipped when the player
   dies; only the rest goes to the grave. Only on a world whose death penalty is Casual, the lowest
