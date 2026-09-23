@@ -18,6 +18,9 @@ namespace OdinsMissingPatch
 
         private InventoryButtons() { }
 
+        /// <summary>The inventory screen was destroyed; its buttons went with it.</summary>
+        internal static void Forget() => Panel.Forget();
+
         private ConfigEntry<bool> sortHotbar;
 
         internal override string Section => "Inventory Buttons";
@@ -73,6 +76,16 @@ namespace OdinsMissingPatch
         {
             private static Button stackNearby;
             private static Button sort;
+
+            /// <summary>
+            /// Lets go of the buttons once the game has destroyed the screen they were on (see
+            /// PanelButtons.ScreenDestroyed), so the next frame makes them afresh on the new one.
+            /// </summary>
+            internal static void Forget()
+            {
+                stackNearby = null;
+                sort = null;
+            }
 
             private static void Postfix(InventoryGui __instance)
             {

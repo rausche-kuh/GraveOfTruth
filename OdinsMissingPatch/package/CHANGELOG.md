@@ -8,6 +8,8 @@
   from a table.
 - The inventory and chest buttons show their icons again when the mod was installed through a mod
   manager that unpacks the icons next to the DLL instead of into their folder (Gale does).
+- The chest buttons come back after leaving to the main menu and entering a world again; before,
+  only the inventory's Sort button survived and opening a chest threw an error every frame.
 - Shared map tables no longer lag everyone: two players near one table kept writing the map to
   each other every ten seconds, and every write sends the whole map to everyone in the area. A
   table is now written only when it is actually missing something of yours, never just because

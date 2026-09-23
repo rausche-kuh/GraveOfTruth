@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
@@ -232,6 +233,24 @@ namespace OdinsMissingPatch
                 rect.sizeDelta = new Vector2(size, size);
                 Pin(rect, new Vector2(x, y));
                 y -= size + Gap;
+            }
+        }
+
+        /// <summary>
+        /// The inventory screen goes with the world on the way back to the main menu, and every
+        /// button on it with it; the next world builds a new screen. This is where that is
+        /// heard, once, so no owner has to test its buttons for life every frame: the shared
+        /// column is emptied and each owner lets go of its own, to make them afresh on the new
+        /// screen the first time it needs them.
+        /// </summary>
+        [HarmonyPatch(typeof(InventoryGui), "OnDestroy")]
+        private static class ScreenDestroyed
+        {
+            private static void Postfix()
+            {
+                column.Clear();
+                ChestButtons.Forget();
+                InventoryButtons.Forget();
             }
         }
 

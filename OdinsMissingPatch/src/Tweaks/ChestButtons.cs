@@ -42,6 +42,9 @@ namespace OdinsMissingPatch
         /// <summary>Whether the game's Take all and Stack all are hidden behind the buttons right now.</summary>
         internal static bool HidesVanilla => Panel.VanillaHidden;
 
+        /// <summary>The inventory screen was destroyed; its buttons went with it.</summary>
+        internal static void Forget() => Panel.Forget();
+
         // ---- The actions ---------------------------------------------------------------------
 
         /// <summary>The panel, player and chest a click may act on, or null: same gate as the game's own buttons.</summary>
@@ -274,8 +277,9 @@ namespace OdinsMissingPatch
                 {
                     return;
                 }
+                RectTransform panel = __instance.m_container;
                 Container chest = __instance.m_currentContainer;
-                bool show = Instance.On && chest != null && __instance.m_container.gameObject.activeSelf;
+                bool show = Instance.On && chest != null && panel != null && panel.gameObject.activeSelf;
                 if (!show)
                 {
                     Hide(__instance);
@@ -293,6 +297,18 @@ namespace OdinsMissingPatch
                 }
                 PanelButtons.LayoutChestColumn(__instance, chestColumn);
                 PanelButtons.LayoutInventoryColumn(__instance);
+            }
+
+            /// <summary>
+            /// Lets go of the buttons once the game has destroyed the screen they were on (see
+            /// PanelButtons.ScreenDestroyed). The list is emptied so the next frame with a chest
+            /// open makes them afresh on the new screen, whose vanilla buttons were never hidden.
+            /// </summary>
+            internal static void Forget()
+            {
+                all.Clear();
+                chestColumn.Clear();
+                VanillaHidden = false;
             }
 
             private static void Hide(InventoryGui gui)

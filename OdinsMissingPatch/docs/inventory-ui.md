@@ -27,6 +27,15 @@
   into it while ChestButtons is off, which is exactly when its own buttons are not there.
   Cancel any drag first (`SetupDragItem(null, null, 1)`), as the game's buttons do, so a held
   item is not moved under the cursor.
+- The buttons do not outlive the screen: `InventoryGui` goes with the world on the way back to
+  the main menu, and the next world builds a new one, so every static reference to a button
+  turns into a destroyed object (Unity's `== null` is true for it, `.gameObject` throws). That
+  is heard once, in `PanelButtons.ScreenDestroyed` (a postfix on `InventoryGui.OnDestroy`),
+  never tested per frame: it empties the shared column and calls each owner's `Forget`, which
+  drops its references so its create-if-missing check makes new buttons on the new screen -
+  ChestButtons also resets `VanillaHidden` there, since the new screen's Take all and Stack all
+  were never hidden. An owner that keeps buttons is listed in that postfix; `TextButton` needs
+  no entry, its `button == null` is the create-if-missing check itself.
 - A button that keeps its label instead of taking an icon is a `NearbyChests.TextButton`: the
   same copy of Take all, widened to the label's TMP `preferredWidth` (reflection) plus a margin
   each side. The two of them - the Nearby use switch and Clear favourites - take the game's Take
