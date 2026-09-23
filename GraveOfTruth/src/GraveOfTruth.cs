@@ -1,4 +1,5 @@
 using BepInEx;
+using BepInEx.Logging;
 using HarmonyLib;
 using System;
 using System.Collections;
@@ -11,48 +12,55 @@ using UnityEngine.Networking;
 namespace GraveOfTruth
 {
     [BepInPlugin(GUID, NAME, VERSION)]
-    public class GraveOfTruthAudio : BaseUnityPlugin
+    public partial class GraveOfTruthPlugin : BaseUnityPlugin
     {
         public const string GUID = "rauschekuh.graveoftruth";
         public const string NAME = "GraveOfTruth";
-        public const string VERSION = "0.1.1";
+        public const string VERSION = "0.1.2";
 
-        /// <summary>Broadcast to every modded client: the whole show here, bolt and storm included.</summary>
+        /// <summary>Broadcast to every modded client: a grave to put the show on.</summary>
         private const string WailRpc = "GraveOfTruth_Wail";
 
         // Audio tuning.
         private const float MinDistance = 6f;
         private const float MaxDistance = 96f;
-        private const float SendCooldown = 2f;
+        // Several deaths at once, or a chatty client, still get one show every couple of seconds.
+        private const float WailCooldown = 2f;
         // The bolt and its clap go first - started underneath them, the jingle is just noise.
         private const float StrikeLeadIn = 1.7f;
         private const float EchoDelay = 0.9f;
         private const float EchoVolume = 0.35f;
         private const float TailDelay = 2f;
         private const float TailVolume = 0.14f;
+        // Out past StormRadius the jingle follows the thunder in, from this far off towards the
+        // grave and this much quieter - a real grave would be out of earshot.
+        private const float DistantOffset = 40f;
+        private const float DistantVolume = 0.5f;
 
         // Weather tuning.
         private const string StormEnv = "ThunderStorm";
-        private const float DeathStormDuration = 18f;
-        private const float GraveWindDuration = 6f;
-        private const float WindIntensity = 1f;
+        private const float StormDuration = 9f;
+        private const float StormFade = 2f;
+        // Closer than this to the grave you get the bolt and the storm, further out distant thunder.
+        private const float StormRadius = 150f;
         private const float StrikeAltitude = 12f;
 
-        private static GraveOfTruthAudio instance;
+        private static GraveOfTruthPlugin instance;
+        private static ManualLogSource log;
         private static AudioClip audioClip;
         private static AudioMixerGroup mixer;
         private static GameObject boltPrefab;
-        private static float lastSend = -100f;
-        private static ZRoutedRpc registeredOn;
         private static Thunder thunder;
-        private static Coroutine weather;
-        private static string savedEnv;
+        private static ZRoutedRpc registeredOn;
+        private static float lastWail = -100f;
+        private static float stormStart = -100f;
 
         void Awake()
         {
             instance = this;
-            StartCoroutine(PreloadClipsCoroutine());
-            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
+            log = Logger;
+            StartCoroutine(LoadClip());
+            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), GUID);
         }
 
         /// <summary>ZNet builds a fresh ZRoutedRpc per session, so re-register once per game.</summary>
@@ -89,12 +97,12 @@ namespace GraveOfTruth
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("[GraveOfTruth] death effects failed: " + e);
+                    log.LogWarning("death effects failed: " + e);
                 }
             }
         }
 
-        /// <summary>Opening your own grave to loot it wails once more, gust and all.</summary>
+        /// <summary>Opening your own grave to loot it wails once more.</summary>
         [HarmonyPatch(typeof(TombStone), nameof(TombStone.Interact))]
         public static class WailOnLoot
         {
@@ -110,20 +118,57 @@ namespace GraveOfTruth
                 }
                 catch (Exception e)
                 {
-                    Debug.LogWarning("[GraveOfTruth] grave effects failed: " + e);
+                    log.LogWarning("grave effects failed: " + e);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Draws the storm over whatever the weather really is. SetEnv only renders an environment
+        /// - light, fog, clouds, rain, the ambient loop - while wet, cold, wind and spawns all
+        /// read GetCurrentEnvironment(), which this never touches. So the storm is looks only, and it
+        /// is dry: dark clouds and thunder, no rain of its own.
+        /// </summary>
+        [HarmonyPatch(typeof(EnvMan), nameof(EnvMan.SetEnv))]
+        public static class StormSky
+        {
+            private static void Prefix(EnvMan __instance, ref EnvSetup env)
+            {
+                float t = Time.time - stormStart;
+                if (t >= StormDuration || env == null)
+                {
+                    return;
+                }
+                // No sky in a crypt.
+                Player player = Player.m_localPlayer;
+                if (player != null && player.InInterior())
+                {
+                    return;
+                }
+                EnvSetup storm = __instance.GetEnv(StormEnv);
+                if (storm == null)
+                {
+                    return;
+                }
+                float fade = Mathf.Clamp01(Mathf.Min(t, StormDuration - t) / StormFade);
+                EnvSetup mix = __instance.InterpolateEnvironment(env, storm, fade);
+                // A dry storm: the interpolation already keeps the real weather's rain and wet
+                // shader, and the storm's ambient loop is its rain, so keep the real one too. Only
+                // the env object is swapped over halfway - it carries the storm's own Thunder,
+                // which flashes on the horizon.
+                mix.m_ambientLoop = env.m_ambientLoop;
+                mix.m_ambientVol = env.m_ambientVol;
+                if (fade >= 0.5f)
+                {
+                    mix.m_envObject = storm.m_envObject;
+                }
+                env = mix;
             }
         }
 
         /// <summary>Tells everyone on the server to put on the show at the grave.</summary>
         private static void Wail(Vector3 pos, bool strike)
         {
-            if (Time.realtimeSinceStartup - lastSend <= SendCooldown)
-            {
-                return;
-            }
-            lastSend = Time.realtimeSinceStartup;
-
             if (ZRoutedRpc.instance != null)
             {
                 // Everybody includes us, so this also plays locally.
@@ -136,34 +181,49 @@ namespace GraveOfTruth
         }
 
         /// <summary>
-        /// The whole show, run the same way on every modded client: the bolt, the weather and the
-        /// jingle. Everything it spawns is local to this client, so nobody sees a thing twice.
+        /// The show, run by every modded client for itself: up close the bolt, the storm and the
+        /// jingle, further out a roll of thunder and a faint jingle from the grave's direction.
+        /// Everything it spawns is local to this client and cosmetic, so nobody sees a thing twice
+        /// or feels it at all.
         /// </summary>
         private static void RPC_Wail(long sender, Vector3 pos, bool strike)
         {
-            // A dedicated server has nobody watching, and its EnvMan is not the players'.
+            // A dedicated server has nobody watching.
             if (ZNet.instance != null && ZNet.instance.IsDedicated())
             {
                 return;
             }
+            if (Time.time - lastWail < WailCooldown)
+            {
+                return;
+            }
+            lastWail = Time.time;
+
             try
             {
-                if (strike && !StrikeGrave(pos))
+                if (!strike)
+                {
+                    instance.StartCoroutine(WailRoutine(pos, 0f, 1f));
+                    return;
+                }
+                // Decided once: whoever died is at the grave now, and keeps their storm after
+                // respawning at home.
+                Vector3 origin;
+                if (TryGetOrigin(out origin) && Vector3.Distance(origin, pos) > StormRadius)
+                {
+                    instance.StartCoroutine(DistantThunder(origin, pos));
+                    return;
+                }
+                if (!StrikeGrave(pos))
                 {
                     SkyFlash(pos);
                 }
-                Blow(strike ? DeathStormDuration : GraveWindDuration, strike);
-
-                if (instance == null)
-                {
-                    PlayAt(pos, 1f);
-                    return;
-                }
-                instance.StartCoroutine(WailRoutine(pos, strike ? StrikeLeadIn : 0f));
+                stormStart = Time.time;
+                instance.StartCoroutine(WailRoutine(pos, StrikeLeadIn, 1f));
             }
             catch (Exception e)
             {
-                Debug.LogWarning("[GraveOfTruth] wail failed: " + e);
+                log.LogWarning("wail failed: " + e);
             }
         }
 
@@ -171,21 +231,22 @@ namespace GraveOfTruth
         /// Waits out the thunder, then rings the jingle over the grave and lets two fading
         /// repeats chase it - a hillside echo, faked with nothing but more audio sources.
         /// </summary>
-        private static IEnumerator WailRoutine(Vector3 pos, float leadIn)
+        private static IEnumerator WailRoutine(Vector3 pos, float leadIn, float volume)
         {
             if (leadIn > 0f)
             {
                 yield return new WaitForSeconds(leadIn);
             }
-            PlayAt(pos, 1f);
+            // The repeats come back a shade flatter, the way one would off a hillside.
+            PlayAt(pos, volume, 1f);
             yield return new WaitForSeconds(EchoDelay);
-            PlayAt(pos, EchoVolume);
+            PlayAt(pos, volume * EchoVolume, 0.97f);
             yield return new WaitForSeconds(TailDelay - EchoDelay);
-            PlayAt(pos, TailVolume);
+            PlayAt(pos, volume * TailVolume, 0.97f);
         }
 
         /// <summary>A throwaway 3D source at the grave, so the jingle carries across the world.</summary>
-        private static void PlayAt(Vector3 pos, float volume)
+        private static void PlayAt(Vector3 pos, float volume, float pitch)
         {
             if (audioClip == null)
             {
@@ -202,8 +263,7 @@ namespace GraveOfTruth
             source.maxDistance = MaxDistance;
             source.dopplerLevel = 0f;
             source.volume = volume;
-            // The repeats come back a shade flatter, the way one would off a hillside.
-            source.pitch = volume < 1f ? 0.97f : 1f;
+            source.pitch = pitch;
             source.outputAudioMixerGroup = SfxMixer();
             source.Play();
 
@@ -301,7 +361,7 @@ namespace GraveOfTruth
                     return boltPrefab;
                 }
             }
-            Debug.LogWarning("[GraveOfTruth] no obliterator lightning found, falling back to a sky flash");
+            log.LogWarning("no obliterator lightning found, falling back to a sky flash");
             return null;
         }
 
@@ -313,107 +373,46 @@ namespace GraveOfTruth
             {
                 return;
             }
-            Vector3 flashPos = pos + Vector3.up * StrikeAltitude;
-            Quaternion rotation = Quaternion.LookRotation(Vector3.down);
-            foreach (GameObject flash in t.m_flashEffect.Create(flashPos, Quaternion.identity))
-            {
-                foreach (Light light in flash.GetComponentsInChildren<Light>())
-                {
-                    light.transform.rotation = rotation;
-                }
-            }
+            Flash(t, pos + Vector3.up * StrikeAltitude, Quaternion.LookRotation(Vector3.down));
             t.m_thunderEffect.Create(pos, Quaternion.identity);
         }
 
         /// <summary>
-        /// Kicks up wind, and for a death the whole thunderstorm. Faked through EnvMan, so every
-        /// client runs its own - and a second wail never stacks a second storm on top.
+        /// Too far off for the storm: the bolt on the grave, a flash on the horizon towards it and
+        /// the clap a few seconds later, the way vanilla Thunder does it - and the jingle, faintly, behind it.
         /// </summary>
-        private static void Blow(float duration, bool storm)
-        {
-            if (instance == null || EnvMan.instance == null)
-            {
-                return;
-            }
-            if (weather != null)
-            {
-                if (!storm)
-                {
-                    return; // a gust never cuts a running storm short
-                }
-                instance.StopCoroutine(weather);
-            }
-            else
-            {
-                savedEnv = EnvMan.instance.m_debugEnv;
-            }
-            weather = instance.StartCoroutine(instance.WeatherRoutine(duration, storm));
-        }
-
-        private IEnumerator WeatherRoutine(float duration, bool storm)
-        {
-            EnvMan env = EnvMan.instance;
-            env.SetDebugWind(UnityEngine.Random.Range(0f, 360f), WindIntensity);
-
-            if (storm)
-            {
-                env.m_debugEnv = StormEnv;
-                // The bolt on the grave already went off; these are the rumbles after it.
-                float remaining = duration;
-                while (remaining > 0f)
-                {
-                    float wait = Mathf.Min(UnityEngine.Random.Range(3f, 6f), remaining);
-                    yield return new WaitForSeconds(wait);
-                    remaining -= wait;
-                    if (remaining > 0f)
-                    {
-                        yield return DistantStrike();
-                        remaining -= 4f;
-                    }
-                }
-            }
-            else
-            {
-                yield return new WaitForSeconds(duration);
-            }
-
-            if (EnvMan.instance != null)
-            {
-                EnvMan.instance.m_debugEnv = savedEnv;
-                EnvMan.instance.ResetDebugWind();
-            }
-            weather = null;
-        }
-
-        /// <summary>Flash on the horizon, clap a few seconds later, the way vanilla Thunder does it.</summary>
-        private IEnumerator DistantStrike()
+        private static IEnumerator DistantThunder(Vector3 origin, Vector3 grave)
         {
             Thunder t = FindThunder();
-            Vector3 origin;
-            if (t == null || !TryGetOrigin(out origin))
+            if (t == null)
             {
                 yield break;
             }
+            Vector3 toGrave = grave - origin;
+            toGrave.y = 0f;
+            toGrave.Normalize();
+            Vector3 flashPos = origin + toGrave * t.m_flashDistanceMax + Vector3.up * t.m_flashAltitude;
+            Flash(t, flashPos, Quaternion.LookRotation((origin - flashPos).normalized));
+            // The bolt still comes down on the grave itself, for whoever can see that far.
+            StrikeGrave(grave);
 
-            float angle = UnityEngine.Random.value * Mathf.PI * 2f;
-            float distance = UnityEngine.Random.Range(t.m_flashDistanceMin, t.m_flashDistanceMax);
-            Vector3 flashPos = origin + new Vector3(Mathf.Sin(angle), 0f, Mathf.Cos(angle)) * distance;
-            flashPos.y += t.m_flashAltitude;
+            yield return new WaitForSeconds(UnityEngine.Random.Range(t.m_thunderDelayMin, t.m_thunderDelayMax));
+            t.m_thunderEffect.Create(flashPos, Quaternion.identity);
+            yield return WailRoutine(origin + toGrave * DistantOffset, StrikeLeadIn, DistantVolume);
+        }
 
-            Quaternion rotation = Quaternion.LookRotation((origin - flashPos).normalized);
-            foreach (GameObject flash in t.m_flashEffect.Create(flashPos, Quaternion.identity))
+        private static void Flash(Thunder t, Vector3 pos, Quaternion rotation)
+        {
+            foreach (GameObject flash in t.m_flashEffect.Create(pos, Quaternion.identity))
             {
                 foreach (Light light in flash.GetComponentsInChildren<Light>())
                 {
                     light.transform.rotation = rotation;
                 }
             }
-
-            yield return new WaitForSeconds(UnityEngine.Random.Range(t.m_thunderDelayMin, t.m_thunderDelayMax));
-            t.m_thunderEffect.Create(flashPos, Quaternion.identity);
         }
 
-        /// <summary>Thunder lives on the ThunderStorm particle systems, inactive in fair weather.</summary>
+        /// <summary>Thunder lives on the ThunderStorm's env object, inactive in fair weather.</summary>
         private static Thunder FindThunder()
         {
             if (thunder != null)
@@ -427,7 +426,7 @@ namespace GraveOfTruth
             }
             else
             {
-                Debug.LogWarning("[GraveOfTruth] no Thunder component found, skipping lightning");
+                log.LogWarning("no Thunder component found, skipping lightning");
             }
             return thunder;
         }
@@ -451,46 +450,23 @@ namespace GraveOfTruth
             return false;
         }
 
-        public static IEnumerator PreloadClipsCoroutine()
+        private static IEnumerator LoadClip()
         {
             string path = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "sound.ogg");
-
             if (!File.Exists(path))
             {
-                Debug.LogWarning($"file {path} does not exist!");
+                log.LogWarning(path + " does not exist");
                 yield break;
             }
-            string filename = "file:///" + path.Replace("\\", "/");
-
-            using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(filename, AudioType.OGGVORBIS))
+            using (UnityWebRequest www = UnityWebRequestMultimedia.GetAudioClip(new Uri(path).AbsoluteUri, AudioType.OGGVORBIS))
             {
-                www.SendWebRequest();
-                yield return null;
-
-                if (www != null)
+                yield return www.SendWebRequest();
+                if (www.result != UnityWebRequest.Result.Success)
                 {
-                    DownloadHandlerAudioClip dac = ((DownloadHandlerAudioClip)www.downloadHandler);
-                    if (dac != null)
-                    {
-                        AudioClip ac = dac.audioClip;
-                        if (ac != null)
-                        {
-                            audioClip = ac;
-                        }
-                        else
-                        {
-                            Debug.LogWarning("audio clip is null. data: " + dac.text);
-                        }
-                    }
-                    else
-                    {
-                        Debug.LogWarning("DownloadHandler is null. bytes downloaded: " + www.downloadedBytes);
-                    }
+                    log.LogWarning("could not load " + path + ": " + www.error);
+                    yield break;
                 }
-                else
-                {
-                    Debug.LogWarning("www is null " + www.url);
-                }
+                audioClip = DownloadHandlerAudioClip.GetContent(www);
             }
         }
     }

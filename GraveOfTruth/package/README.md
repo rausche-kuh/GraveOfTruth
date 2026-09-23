@@ -1,13 +1,6 @@
 # GraveOfTruth
 
-A small Valheim mod that makes dying feel appropriately embarrassing.
-
-- When you die, the obliterator's lightning comes down on your fresh grave, and once the thunder
-  has rolled the loser jingle plays out of it, echoing off the hills — everyone nearby sees and
-  hears it. The bolt is cosmetic and hurts nobody.
-- Dying also brings a short thunderstorm down on everyone's head — the whole server gets to
-  watch the sky turn on you.
-- Coming back to loot the grave plays the jingle one more time, echo and all, with a gust of wind.
+A small Valheim mod that makes dying feel appropriately embarrassing. Dying brings a short thunderstorm down over you and sends you a message from Odin.
 
 ## Multiplayer
 

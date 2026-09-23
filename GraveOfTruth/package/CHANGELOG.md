@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2
+
+- The death storm is only for show now: it no longer makes anyone Wet.
+- Improved distant deaths
+- The death storm is shorter and dry
+
 ## 0.1.1
 
 - Lighter mod page icon; nothing in the game changed.

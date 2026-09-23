@@ -38,6 +38,9 @@
   <!-- Relative includes resolve against the mod directory, not this file. -->
   <ItemGroup>
     <Compile Include="src\**\*.cs" />
+    <!-- src/Dev/ holds test helpers (console commands and the like): Debug builds only, so
+         package - which builds Release - never ships them. Deploy with -c Debug to get them. -->
+    <Compile Remove="src\Dev\**" Condition="'$(Configuration)' != 'Debug'" />
     <!-- Everything in assets/ ships next to the DLL, keeping its subfolder layout. -->
     <None Include="assets\**\*" CopyToOutputDirectory="PreserveNewest" Link="%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>

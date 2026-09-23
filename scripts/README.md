@@ -89,7 +89,7 @@ found in — usually the one you actually play — and `--profile <name>` picks 
 ./scripts/deploy.sh [-c Debug|Release] [--profile-dir DIR] [mod ...]
 ```
 
-Builds (Release by default) and copies each mod's DLL, everything in its `assets/`, its
+Builds (Release by default; `Debug` also compiles each mod's `src/Dev/` test helpers) and copies each mod's DLL, everything in its `assets/`, its
 `manifest.json` and its `icon.png` into the profile. The profile override is for a one-off install
 against a second profile without re-running `setup`.
 

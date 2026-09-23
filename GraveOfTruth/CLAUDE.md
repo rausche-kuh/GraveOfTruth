@@ -3,15 +3,19 @@
 Makes dying embarrassing. See the root `CLAUDE.md` for the shared build, the scripts and the
 environment.
 
-**Shipped (0.1.1):** on death the whole show is broadcast to every modded client — the bolt on the
-grave, a ~18s `ThunderStorm`, and the loser jingle as a 3D sound from the grave a beat after the
-bolt strikes, with two fading echoes behind it. Opening your own grave to loot it wails once more,
-with a wind gust. Every client runs its own copy of the effects off the one RPC, so nothing is
-spawned or played twice.
+**Shipped (0.1.2):** on death the whole show is broadcast to every modded client. Clients within
+`StormRadius` of the grave (which includes whoever died) get the bolt on the grave, a ~9s dry
+`ThunderStorm` (looks only, no rain, no rain loop) and the loser jingle as a 3D sound from the
+grave a beat after the bolt strikes, with two fading echoes behind it. The rest get the bolt on the
+grave plus one distant flash and clap from the grave's direction, then the jingle at
+`DistantVolume` from `DistantOffset` towards the grave (the grave itself is past the jingle's 96m
+rolloff). Opening your own grave to loot it wails once more. Every client runs its own copy of the
+effects off the one RPC, so nothing is spawned or played twice.
 
 | Path | What |
 | --- | --- |
 | `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
+| `src/Dev/GraveOfTruthTest.cs` | The `gravetest` dev command, a `partial` of the plugin class. Debug builds only, never packaged. |
 | `assets/sound.ogg` | Loser jingle, loaded at runtime from next to the DLL. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
@@ -45,9 +49,20 @@ spawned or played twice.
 - Never hook anything that runs *inside* `Player.OnDeath` before `Game.RequestRespawn` (e.g.
   `TombStone.Setup`, which `CreateTombStone` calls): an exception there skips the respawn request
   and the corpse stays standing forever. Patch `OnDeath` itself and wrap the body in try/catch.
-- Weather is faked through `EnvMan` (`m_debugEnv` for the environment, `SetDebugWind` /
-  `ResetDebugWind` for the gust, which also drives `AudioMan`'s wind loop) and lightning reuses the
-  vanilla `Thunder` component's `m_flashEffect` / `m_thunderEffect`. None of it is networked by the
-  game — it only reaches the other players because each of them runs the RPC — so restore
-  `m_debugEnv` to whatever it was rather than assuming `""`, and keep `Blow`'s single coroutine so
-  a second wail never stacks a second storm.
+- The storm must stay cosmetic. Never set `EnvMan.m_debugEnv` or `SetDebugWind`: they change the
+  environment every system reads, so they make players Wet, lift Freezing and cold, override
+  `EnvZone` in dungeons and move the wind ships sail on. Instead `StormSky` prefixes the private
+  `EnvMan.SetEnv`, which only renders (light, fog, clouds, rain, ambient loop, wet shader), and
+  hands it `InterpolateEnvironment(real, ThunderStorm, fade)`; `IsWet` / `IsCold` / wind read
+  `GetCurrentEnvironment()` and never see it. The interpolation clones the *real* env's
+  `m_psystems`, `m_isWet` and `m_envObject`; the first two stay the real env's, as does
+  `m_ambientLoop` (the storm's is rain), so the storm never rains. Only `m_envObject` is swapped
+  to the storm's past the halfway mark — the storm's `Thunder` lives on it, so its horizon
+  flashes come for free. It is skipped
+  while the local player is `InInterior()`.
+- Nearness is decided once, when the RPC arrives, so the dead player keeps their storm after
+  respawning at home. `RPC_Wail` has its own `WailCooldown`, which covers several deaths at once
+  and any client sending the RPC at will.
+- To test without dying: `scripts/deploy.sh -c Debug GraveOfTruth`, then `devcommands` and `gravetest [distance]` in the F5 console drops a real
+  grave of yours (one stone inside, so looting it wails too) 30m ahead in the direction you are
+  looking and sends the same RPC a death would. Mind `WailCooldown` between runs.
