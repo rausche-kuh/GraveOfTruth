@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Everything shared lives in ../Directory.Build.props. -->
+  <PropertyGroup>
+    <AssemblyName>OdinsPaths</AssemblyName>
+    <RootNamespace>OdinsPaths</RootNamespace>
+  </PropertyGroup>
+
+</Project>

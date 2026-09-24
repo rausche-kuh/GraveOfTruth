@@ -1,0 +1,9 @@
+{
+    "name": "OdinsPaths",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
+    "description": "Reveal a boss altar and the next night's sleep lays a winding trail to it: around hills, along valleys, from shore to shore.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}
