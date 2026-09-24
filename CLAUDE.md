@@ -7,12 +7,14 @@ build, the reference assemblies and the scripts are shared.
 `OdinsMissingPatch/` — a collection of configurable QOL tweaks (see `OdinsMissingPatch/CLAUDE.md`).
 `ThisIsValheim/` — doors are kicked open (see `ThisIsValheim/CLAUDE.md`).
 `ImmersiveEntrance/` — dungeon entrances show the dungeon behind them (see `ImmersiveEntrance/CLAUDE.md`).
+`OdinsTree/` — bless a tree so a tree house on it is safe; scaffold, plan in `OdinsTree/ROADMAP.md`.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
 | `<Mod>/` | One mod: `<Mod>.csproj`, `src/`, `assets/`, `package/`, `README.md`. |
+| `<Mod>/ROADMAP.md` | What comes next for that mod, with the game facts each entry still has to check, and its known bugs. |
 | `<Mod>/package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (its Changelog tab). |
 | `<Mod>/<Mod>.csproj` | `AssemblyName` + `RootNamespace` only — everything else is inherited. |
 | `Directory.Build.props` | The shared build: target framework, `lib/` references, publicizer, `src/` and `assets/` globs, `src/Dev/` for Debug only. |

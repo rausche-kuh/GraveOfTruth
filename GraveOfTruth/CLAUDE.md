@@ -17,6 +17,7 @@ effects off the one RPC, so nothing is spawned or played twice.
 | `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
 | `src/Dev/GraveOfTruthTest.cs` | The `gravetest` dev command, a `partial` of the plugin class. Debug builds only, never packaged. |
 | `assets/sound.ogg` | Loser jingle, loaded at runtime from next to the DLL. |
+| `ROADMAP.md` | What comes next (death stats, the obituary broadcast, the talking grave), with the research each entry needs first. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
 
 ## Conventions
