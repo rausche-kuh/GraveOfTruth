@@ -11,18 +11,6 @@ into the doc for the area, not here.
 
 ## Small and client side
 
-### Chest amounts inline in the crafting panel
-
-_NearbyCrafting — [chests](docs/chests.md)_
-
-Today an ingredient the chests have to pay for shows its amount in yellow and explains itself in
-a tooltip. Replace the tooltip with the numbers, right in the requirement slot:
-`{carried} (<color=yellow>{in chests}</color>)` against the needed amount, e.g. `3 (12) / 10`.
-The requirement slot's text is set in `InventoryGui.SetupRequirement` (verify), which already
-runs per frame for the recipe and the piece info — reuse the per-frame chest count cache. Check
-that the longer string fits the slot at the largest amounts (it is a narrow box; drop the `/ n`
-if it does not, or shrink the font like the game does for quality levels).
-
 ### Shift + quick stack tops up the backpack
 
 _QuickStack — [chests](docs/chests.md)_

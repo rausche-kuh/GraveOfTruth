@@ -89,9 +89,13 @@ chests (NearbyCrafting, NearbyFuel, QuickStack, AddAll, ChestButtons).
   row of the crafting panel and the piece info, per frame; it shows only the needed amount
   (`res_amount`, a `TMP_Text`, reachable as `Graphic` for its colour) in white, or blinking red
   when the count falls short, and sets the row's `UITooltip.m_text` to the item name (the HUD
-  rows have one too, but no cursor to hover them). Harmony's `__state` may be a struct, which
-  is how `NearbyCrafting.RowScope` carries the carried count taken before the reach opens into
-  its postfix. A `m_requireOnlyOneIngredient` recipe
+  rows have one too, but no cursor to hover them). `res_amount` is set in `prstartk`, a pixel
+  font whose every character is one em wide, in a 47.5x20 box (15pt) on a 64px slot: three
+  characters fit. Writing carried and chest counts into it (`3(12)` over the need) was tried on
+  2026-09-24 and dropped: at a readable size it crowds the slot and reads as the cost itself, so
+  the split stays in the tooltip and the amount only turns yellow. Harmony's `__state` may be a
+  struct, which is how `NearbyCrafting.RowScope` carries the carried count taken before the
+  reach opens into its postfix. A `m_requireOnlyOneIngredient` recipe
   additionally looks the ingredient up in the backpack (`GetFirstRequiredItem`), so a widened
   count there promises a craft the lookup then fails; `NearbyCrafting` leaves those recipes alone.
   `InventoryGui.UpdateRecipeList` counts every ingredient of every recipe per quality level in one
