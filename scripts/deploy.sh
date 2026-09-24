@@ -25,6 +25,14 @@ done
 mods=($(resolve_mods "${mods[@]+"${mods[@]}"}"))
 [ -n "$profile" ] || profile=$(profile_dir)
 
+# Mono maps a plugin DLL into memory and reads method bodies from it lazily, so overwriting one
+# under a running game corrupts what it has not compiled yet ("BadImageFormatException: Method
+# has zero rva", garbled method names in stack traces). The copy still happens - the game has
+# to be restarted for the new build anyway - but say so.
+if pgrep -x valheim.x86_64 >/dev/null 2>&1 || pgrep -x valheim.exe >/dev/null 2>&1; then
+    note "Valheim is running: the game keeps the old build and may throw BadImageFormatException until restarted."
+fi
+
 for mod in "${mods[@]}"; do
     step "Deploying $mod..."
     dotnet build "$root/$mod/$mod.csproj" -c "$configuration"

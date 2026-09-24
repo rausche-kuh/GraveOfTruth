@@ -24,6 +24,14 @@ $ErrorActionPreference = 'Stop'
 $Mods = Resolve-Mods $Mods
 if (-not $ProfileDir) { $ProfileDir = Get-ProfileDir }
 
+# Mono maps a plugin DLL into memory and reads method bodies from it lazily, so overwriting one
+# under a running game corrupts what it has not compiled yet ("BadImageFormatException: Method
+# has zero rva", garbled method names in stack traces). The copy still happens - the game has
+# to be restarted for the new build anyway - but say so.
+if (Get-Process -Name valheim -ErrorAction SilentlyContinue) {
+    Write-Host 'Valheim is running: the game keeps the old build and may throw BadImageFormatException until restarted.' -ForegroundColor Yellow
+}
+
 foreach ($mod in $Mods) {
     Write-Host "Deploying $mod..." -ForegroundColor Cyan
     dotnet build (Join-Path $Root "$mod\$mod.csproj") -c $Configuration

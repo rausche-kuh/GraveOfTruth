@@ -225,3 +225,8 @@ version.
 
 **The mod doesn't load in game** — check that it landed in the profile you actually launch (`setup`
 prints `Profile : …`), and read `<profile>/BepInEx/LogOutput.log`.
+
+**`BadImageFormatException: Method has zero rva`**, with garbled method names in the stack trace,
+after a deploy — the game was running when the DLL was copied over. Mono reads method bodies out of
+the file lazily, so the running game read the new file at the old offsets. Nothing is wrong with the
+build: restart the game. `deploy` warns when it sees Valheim running.
