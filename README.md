@@ -7,6 +7,8 @@
 | [ThisIsValheim](ThisIsValheim/)         | Doors are kicked open, not opened — the game's own bare handed kick bursts a door open four times faster than it should, with a battering ram's impact in its face. |
 | [ImmersiveEntrance](ImmersiveEntrance/) | Dungeon entrances are no longer a black wall: the doorway shows the dungeon behind it, torches lit. Proof of concept. |
 | [OdinsTree](OdinsTree/)                 | Bless a tree with the hammer and it never falls, so the tree house on it is safe — even without the mod. |
+| [OdinsCompass](OdinsCompass/)           | A compass worn like the wishbone: wavy lines of blue light blow toward the nearest boss, and each upgrade teaches it a biome's dungeons and ore. Works on any server. What comes next: its [roadmap](OdinsCompass/ROADMAP.md). |
+| [OdinsPaths](OdinsPaths/)               | Read a vegvisir, sleep, and a path winds from home to the boss altar along the easiest ground, shore to shore. Server side. Planned: see its [roadmap](OdinsPaths/ROADMAP.md). |
 
 ## Quick start
 
@@ -28,6 +30,8 @@ OdinsMissingPatch/     the same shape, minus assets/
 ThisIsValheim/         the same shape, minus assets/
 ImmersiveEntrance/     the same shape, minus assets/
 OdinsTree/             the same shape, minus assets/
+OdinsCompass/          the same shape
+OdinsPaths/            the same shape, minus assets/ (a scaffold so far)
 scripts/               setup, deploy, bump, package, decompile, clean (.sh and .ps1)
 Directory.Build.props  the build every mod shares
 lib/                   game + BepInEx reference assemblies   (generated, gitignored)

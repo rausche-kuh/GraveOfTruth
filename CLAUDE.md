@@ -8,6 +8,8 @@ build, the reference assemblies and the scripts are shared.
 `ThisIsValheim/` — doors are kicked open (see `ThisIsValheim/CLAUDE.md`).
 `ImmersiveEntrance/` — dungeon entrances show the dungeon behind them (see `ImmersiveEntrance/CLAUDE.md`).
 `OdinsTree/` — bless a tree so a tree house on it is safe (see `OdinsTree/CLAUDE.md`).
+`OdinsCompass/` — a wearable compass that points to the nearest boss, dungeon or ore (see `OdinsCompass/CLAUDE.md`, next steps in `OdinsCompass/ROADMAP.md`).
+`OdinsPaths/` — sleep after reading a vegvisir and a winding path is laid to the boss altar; server side, scaffold, plan in `OdinsPaths/ROADMAP.md`.
 
 ## Layout
 
