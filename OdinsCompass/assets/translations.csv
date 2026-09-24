@@ -1,0 +1,58 @@
+key,English,German
+// Every word the mod puts on screen. One column per language, English first: a cell left empty
+// falls back to English, and a language without a column falls back to English as a whole, so a
+// new language is a new column here and nothing else. A row starting with // is a comment. Keep
+// commas inside "quotes", and write "" for a quote inside a value.
+//
+// The items, one per tier
+oc_compass1,Compass,Kompass
+oc_compass2,Compass (Black Forest),Kompass (Schwarzwald)
+oc_compass3,Compass (Swamp),Kompass (Sumpf)
+oc_compass4,Compass (Mountain),Kompass (Berge)
+oc_compass5,Compass (Plains),Kompass (Ebenen)
+oc_compass6,Compass (Mistlands),Kompass (Nebellande)
+oc_compass7,Compass (Ashlands),Kompass (Aschelande)
+oc_compass8,Compass (Deep North),Kompass (Tiefer Norden)
+oc_compass_desc,A needle that knows the way. Worn on the belt it points to the nearest place it knows of - not on the map but as a wind of blue light streaming toward it. Ore it only senses nearby.,Eine Nadel die den Weg kennt. Am Gürtel getragen zeigt sie zum nächsten Ort den sie kennt - nicht auf der Karte sondern als Wind aus blauem Licht der dorthin strömt. Erz spürt sie nur in der Nähe.
+oc_compass_knows,Knows,Kennt
+oc_compass_knows_nothing,nothing yet,noch nichts
+//
+// The status effect while a compass is worn
+oc_compass_effect,Compass,Kompass
+oc_compass_effect_tooltip,The compass points the way to what it seeks.,Der Kompass weist den Weg zu dem was er sucht.
+oc_compass_lost,not in this world,nicht in dieser Welt
+oc_compass_none_near,none nearby,keins in der Nähe
+//
+// The targets of the default config, tier by tier
+oc_eikthyr,Eikthyr,Eikthyr
+oc_haldor,Haldor,Haldor
+oc_hildir,Hildir,Hildir
+oc_elder,The Elder,Der Älteste
+oc_burialchamber,Burial chamber,Grabkammer
+oc_trollcave,Troll cave,Trollhöhle
+oc_copper,Copper,Kupfer
+oc_tin,Tin,Zinn
+oc_bonemass,Bonemass,Bonemass
+oc_sunkencrypt,Sunken crypt,Versunkene Krypta
+oc_bogwitch,Bog witch,Moorhexe
+oc_moder,Moder,Moder
+oc_drakenest,Drake nest,Drachennest
+oc_frostcave,Frost cave,Frosthöhle
+oc_silver,Silver,Silber
+oc_yagluth,Yagluth,Yagluth
+oc_fulingvillage,Fuling village,Fuling-Dorf
+oc_fulingtotem,Fuling totem,Fuling-Totem
+oc_tarpit,Tar pit,Teergrube
+oc_queen,The Queen,Die Königin
+oc_infestedmine,Infested mine,Verseuchte Mine
+oc_guardtower,Dvergr guard tower,Dvergr-Wachturm
+oc_extractor,Dvergr excavation,Dvergr-Grabung
+oc_fader,Fader,Fader
+oc_charredfortress,Charred fortress,Verkohlte Festung
+oc_putridhole,Putrid hole,Fauliges Loch
+oc_dnboss,Boss of the Deep North,Boss des Tiefen Nordens
+oc_thehole,The hole,Das Loch
+oc_northvillage,Village,Dorf
+oc_morkborg,Mork Borg,Mork Borg
+oc_memorial,Memorial,Gedenkstätte
+oc_lumbercamp,Lumber camp,Holzfällerlager

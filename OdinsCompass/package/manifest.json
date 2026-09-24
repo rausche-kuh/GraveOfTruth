@@ -1,0 +1,9 @@
+{
+    "name": "OdinsCompass",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
+    "description": "A craftable compass worn like the wishbone: blue streaks blow toward the nearest boss, and upgrades teach it each biome's dungeons and ore.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}
