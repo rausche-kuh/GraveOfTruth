@@ -25,17 +25,27 @@ namespace OdinsTree
         public const string NAME = "Odin's Tree";
         public const string VERSION = "0.1.0";
 
-        /// <summary>The health a blessed tree gets. Finite, so other mods' maths stay sane.</summary>
-        private const float BlessedHealth = 1e9f;
+        /// <summary>
+        /// The health a blessed tree gets. Finite, so other mods' maths stay sane, but so large
+        /// that a float cannot even represent the loss of an ordinary hit: a client without the
+        /// mod chops at it forever.
+        /// </summary>
+        private const float BlessedHealth = 1e12f;
 
         /// <summary>Anything at or above this is blessed - no vanilla tree comes near it.</summary>
         private const float BlessedThreshold = 1e8f;
 
-        /// <summary>How far from the player a sapling still feels the dodge, in metres.</summary>
+        /// <summary>How far from the player a sapling still feels the twerk, in metres.</summary>
         private const float TwerkRadius = 3f;
 
-        /// <summary>A pause longer than this between two dodges does not count as twerking.</summary>
-        private const float MaxDodgeInterval = 1.5f;
+        /// <summary>A pause longer than this between two crouch presses ends the twerk.</summary>
+        private const float MaxCrouchInterval = 1.5f;
+
+        /// <summary>Crouch presses in a row before the saplings start to grow.</summary>
+        private const int TwerkCrouches = 3;
+
+        /// <summary>The tint of a growing sapling; the emission is a dimmer copy of it.</summary>
+        private static readonly Color TwerkGreen = new Color(0.4f, 1f, 0.3f);
 
         internal static ConfigEntry<float> TerrainGuardRadius;
         internal static ConfigEntry<float> TwerkGrowSeconds;
@@ -47,14 +57,20 @@ namespace OdinsTree
         /// <summary>The tree families, built once the prefabs are known - see <see cref="GetFamilies"/>.</summary>
         private static List<List<string>> families;
 
-        private static float lastDodge = -999f;
+        /// <summary>Crouch presses in the current run, and when the last one came.</summary>
+        private static int crouches;
+        private static float lastCrouch = -999f;
         private static float lastWhyNotGrowing = -999f;
+
+        /// <summary>The saplings currently tinted green, to untint when the twerk stops.</summary>
+        private static readonly List<Plant> glowing = new List<Plant>();
 
         void Awake()
         {
             TerrainGuardRadius = Config.Bind("Blessing", "TerrainGuardRadius", 3f, new ConfigDescription(
                 "How far from a blessed tree's trunk the ground cannot be dug, raised or levelled, " +
-                "in metres. 0 lets the ground be changed right up to the trunk.",
+                "in metres. 0 lets the ground be changed right up to the trunk. On a server this " +
+                "is what players without the mod are held to.",
                 new AcceptableValueRange<float>(0f, 10f)));
             TwerkGrowSeconds = Config.Bind("Growth", "TwerkGrowSeconds", 15f, new ConfigDescription(
                 "How many seconds of dodging back and forth beside a sapling grow it into a tree. " +
@@ -83,10 +99,68 @@ namespace OdinsTree
                 && nview.GetZDO().GetFloat(ZDOVars.s_health, tree.m_health) >= BlessedThreshold;
         }
 
-        private static TreeBase HoveredTree(Player player)
+        /// <summary>
+        /// What the player is pointed at. Out of build mode that is the game's own hover object.
+        /// Build mode clears it every frame (UpdateHover), so there this is the same raycast the
+        /// game uses to find the piece to repair or remove: from the camera, on the remove mask,
+        /// within placing distance of the eyes.
+        /// </summary>
+        private static GameObject AimedObject(Player player)
         {
-            GameObject hover = player != null ? player.GetHoverObject() : null;
-            return hover != null ? hover.GetComponentInParent<TreeBase>() : null;
+            if (player == null)
+            {
+                return null;
+            }
+            if (!player.InPlaceMode())
+            {
+                return player.GetHoverObject();
+            }
+            if (GameCamera.instance == null || player.m_eye == null)
+            {
+                return null;
+            }
+            Transform camera = GameCamera.instance.transform;
+            if (!Physics.Raycast(camera.position, camera.forward, out RaycastHit hit, 50f, player.m_removeRayMask)
+                || Vector3.Distance(player.m_eye.position, hit.point) >= player.m_maxPlaceDistance)
+            {
+                return null;
+            }
+            return hit.collider.gameObject;
+        }
+
+        private static TreeBase AimedTree(Player player)
+        {
+            GameObject aimed = AimedObject(player);
+            return aimed != null ? aimed.GetComponentInParent<TreeBase>() : null;
+        }
+
+        /// <summary>
+        /// The tree's status, like the ancient root's, plus the hammer's hints for what it is
+        /// pointed at; or an empty string.
+        /// </summary>
+        private static string HoverText(Player player, GameObject aimed)
+        {
+            if (aimed == null)
+            {
+                return "";
+            }
+            TreeBase tree = aimed.GetComponentInParent<TreeBase>();
+            ZNetView nview = aimed.GetComponentInParent<ZNetView>();
+            bool blessed = IsBlessed(tree);
+            string text = blessed ? "Blessed by Odin" : "";
+            if (!player.InPlaceMode())
+            {
+                return text;
+            }
+            if (tree != null && player.GetSelectedPiece()?.m_repairPiece == true)
+            {
+                text += blessed ? "\n[LMB] Lift blessing" : "\n[LMB] Bless";
+            }
+            if (!blessed && nview != null && NextKind(nview.gameObject) != null)
+            {
+                text += "\n[RMB] Next kind";
+            }
+            return text.TrimStart('\n');
         }
 
         private static bool NearBlessedTree(Vector3 point, float radius)
@@ -109,6 +183,55 @@ namespace OdinsTree
                 }
             }
             return false;
+        }
+
+        private static readonly List<ZDO> nearZDOs = new List<ZDO>();
+
+        /// <summary>
+        /// <see cref="NearBlessedTree"/> from the world data instead of the loaded trees, so it
+        /// also works where the trees are not instantiated: on a server. Looks through the zone
+        /// of the point and its neighbours.
+        /// </summary>
+        private static bool NearBlessedTreeZDO(Vector3 point, float radius)
+        {
+            float guard = TerrainGuardRadius.Value;
+            if (guard <= 0f || ZDOMan.instance == null)
+            {
+                return false;
+            }
+            nearZDOs.Clear();
+            ZDOMan.instance.FindSectorObjects(ZoneSystem.GetZone(point), new SimulationDistance(1, 0, true), nearZDOs);
+            foreach (ZDO zdo in nearZDOs)
+            {
+                if (IsBlessedTree(zdo) && Utils.DistanceXZ(zdo.GetPosition(), point) < guard + radius)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static HashSet<int> treePrefabs;
+
+        /// <summary>A blessed tree by its ZDO alone: a TreeBase prefab with the blessed health.</summary>
+        private static bool IsBlessedTree(ZDO zdo)
+        {
+            if (treePrefabs == null)
+            {
+                if (ZNetScene.instance == null)
+                {
+                    return false;
+                }
+                treePrefabs = new HashSet<int>();
+                foreach (KeyValuePair<int, GameObject> pair in ZNetScene.instance.m_namedPrefabs)
+                {
+                    if (pair.Value != null && pair.Value.GetComponent<TreeBase>() != null)
+                    {
+                        treePrefabs.Add(pair.Key);
+                    }
+                }
+            }
+            return treePrefabs.Contains(zdo.GetPrefab()) && zdo.GetFloat(ZDOVars.s_health) >= BlessedThreshold;
         }
 
         /// <summary>
@@ -199,10 +322,107 @@ namespace OdinsTree
             private static void Postfix(TreeBase __instance)
             {
                 trees.Add(__instance);
-                if (__instance.GetComponent<Hoverable>() == null)
+            }
+        }
+
+        /// <summary>
+        /// The look of a blessing, all borrowed from the game: the incinerator's lightning strikes
+        /// the trunk, the forsaken power's red burst follows, and the boss stone's flickering glow
+        /// lingers for a few seconds. Added to a tree when it is blessed and plays only for
+        /// whoever blessed; afterwards the tree looks like any other.
+        /// </summary>
+        private class BlessedLook : MonoBehaviour
+        {
+            /// <summary>How long the glow stays after the burst.</summary>
+            private const float GlowSeconds = 6f;
+
+            private GameObject glow;
+
+            /// <summary>Plays the blessing: strike, burst, glow.</summary>
+            public void Bless()
+            {
+                Lift();
+                Strike(transform.position);
+                Invoke(nameof(Burst), 0.7f);
+            }
+
+            /// <summary>Cuts a show that is still playing.</summary>
+            public void Lift()
+            {
+                CancelInvoke(nameof(Burst));
+                if (glow != null)
                 {
-                    __instance.gameObject.AddComponent<TreeHint>();
+                    Destroy(glow);
                 }
+            }
+
+            /// <summary>
+            /// The incinerator's lightning without its damage: lightningAOE is a networked Aoe, so
+            /// its visual children are cloned one by one under a holder that goes away after the
+            /// longest of them has played.
+            /// </summary>
+            private static void Strike(Vector3 pos)
+            {
+                GameObject lightning = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab("lightningAOE") : null;
+                if (lightning == null)
+                {
+                    return;
+                }
+                GameObject holder = new GameObject("OdinsTree_lightning");
+                holder.transform.position = pos;
+                foreach (Transform child in lightning.transform)
+                {
+                    if (child.GetComponent<Aoe>() == null)
+                    {
+                        Instantiate(child.gameObject, holder.transform, false);
+                    }
+                }
+                Destroy(holder, 10f);
+            }
+
+            /// <summary>
+            /// The red burst of activating a forsaken power (fx_GP_Activation), and the glow that
+            /// lingers after it.
+            /// </summary>
+            private void Burst()
+            {
+                StatusEffect power = ObjectDB.instance != null
+                    ? ObjectDB.instance.GetStatusEffect("GP_Eikthyr".GetStableHashCode()) : null;
+                if (power != null)
+                {
+                    power.m_startEffects.Create(transform.position, Quaternion.identity);
+                }
+                glow = Glow(transform);
+                if (glow != null)
+                {
+                    Destroy(glow, GlowSeconds);
+                }
+            }
+
+            /// <summary>
+            /// The boss stone's active glow: a flickering red light and two looping particle
+            /// systems. Its raven guide point is dropped before it can register, and the tree's
+            /// random scale is cancelled so the glow is the same size on every tree.
+            /// </summary>
+            private static GameObject Glow(Transform tree)
+            {
+                GameObject stone = ZNetScene.instance != null ? ZNetScene.instance.GetPrefab("BossStone_Eikthyr") : null;
+                BossStone boss = stone != null ? stone.GetComponent<BossStone>() : null;
+                if (boss == null || boss.m_activeEffect == null)
+                {
+                    return null;
+                }
+                GameObject glow = Instantiate(boss.m_activeEffect, tree, false);
+                foreach (GuidePoint guide in glow.GetComponentsInChildren<GuidePoint>(true))
+                {
+                    guide.enabled = false;
+                    Destroy(guide.gameObject);
+                }
+                Vector3 scale = tree.lossyScale;
+                glow.transform.localPosition = Vector3.zero;
+                glow.transform.localScale = new Vector3(1f / scale.x, 1f / scale.y, 1f / scale.z);
+                glow.SetActive(true);
+                return glow;
             }
         }
 
@@ -215,7 +435,7 @@ namespace OdinsTree
         {
             private static bool Prefix(Player __instance, ItemDrop.ItemData toolItem, Piece repairPiece)
             {
-                TreeBase tree = HoveredTree(__instance);
+                TreeBase tree = AimedTree(__instance);
                 if (tree == null)
                 {
                     return true;
@@ -228,9 +448,25 @@ namespace OdinsTree
                 bool lift = IsBlessed(tree);
                 nview.ClaimOwnership();
                 nview.GetZDO().Set(ZDOVars.s_health, lift ? tree.m_health : BlessedHealth);
-                if (repairPiece != null)
+                BlessedLook look = tree.GetComponent<BlessedLook>();
+                if (lift)
                 {
-                    repairPiece.m_placeEffect.Create(tree.transform.position, tree.transform.rotation, null, 1f, -1, __instance.GetZDOID());
+                    if (look != null)
+                    {
+                        look.Lift();
+                    }
+                    if (repairPiece != null)
+                    {
+                        repairPiece.m_placeEffect.Create(tree.transform.position, tree.transform.rotation, null, 1f, -1, __instance.GetZDOID());
+                    }
+                }
+                else
+                {
+                    if (look == null)
+                    {
+                        look = tree.gameObject.AddComponent<BlessedLook>();
+                    }
+                    look.Bless();
                 }
                 __instance.Message(MessageHud.MessageType.TopLeft,
                     lift ? "The blessing is lifted" : "This tree is blessed by Odin");
@@ -240,40 +476,40 @@ namespace OdinsTree
         }
 
         /// <summary>
-        /// Trees are not Hoverable, so every tree gets this one: the hammer's hints while in
-        /// build mode, nothing otherwise (an empty text keeps the crosshair plain).
+        /// A blessed tree does not take hits, like the ancient root: no damage text, no shake, no
+        /// chips, no noise. Damage is what the hitter's client calls; RPC_Damage is what the
+        /// tree's owner runs, and catches hits from clients without the mod.
         /// </summary>
-        private class TreeHint : MonoBehaviour, Hoverable
+        [HarmonyPatch(typeof(TreeBase))]
+        private static class UnhittableWhenBlessed
         {
-            public string GetHoverText()
-            {
-                Player player = Player.m_localPlayer;
-                TreeBase tree = GetComponent<TreeBase>();
-                if (player == null || tree == null || !player.InPlaceMode())
-                {
-                    return "";
-                }
-                bool blessed = IsBlessed(tree);
-                string text = blessed ? "Blessed by Odin" : "";
-                if (player.GetSelectedPiece()?.m_repairPiece == true)
-                {
-                    text += blessed ? "\n[LMB] Lift blessing" : "\n[LMB] Bless";
-                }
-                if (!blessed && NextKind(gameObject) != null)
-                {
-                    text += "\n[RMB] Next kind";
-                }
-                return text.TrimStart('\n');
-            }
+            [HarmonyPrefix, HarmonyPatch(nameof(TreeBase.Damage))]
+            private static bool Damage(TreeBase __instance) => !IsBlessed(__instance);
 
-            public string GetHoverName()
-            {
-                return "";
-            }
+            [HarmonyPrefix, HarmonyPatch(nameof(TreeBase.RPC_Damage))]
+            private static bool RPC_Damage(TreeBase __instance) => !IsBlessed(__instance);
+        }
 
-            public float GetHoverOffset()
+        /// <summary>
+        /// The hints go straight into the HUD's crosshair label, after the game has written its
+        /// own (which in build mode is always empty, since the hover object is cleared). The label
+        /// is a TextMeshProUGUI and lib/ has no TextMeshPro to reference, so it is set by name.
+        /// </summary>
+        [HarmonyPatch(typeof(Hud), nameof(Hud.UpdateCrosshair))]
+        private static class TreeHoverText
+        {
+            private static void Postfix(Hud __instance, Player player)
             {
-                return 0f;
+                string text = HoverText(player, AimedObject(player));
+                if (text.Length == 0)
+                {
+                    return;
+                }
+                Traverse.Create(__instance).Field("m_hoverName").Property("text").SetValue(text);
+                if (__instance.m_crosshair != null)
+                {
+                    __instance.m_crosshair.color = Color.yellow;
+                }
             }
         }
 
@@ -319,13 +555,189 @@ namespace OdinsTree
             }
         }
 
-        /// <summary>The terrain's owner refuses other players' operations near its blessed trees.</summary>
-        [HarmonyPatch(typeof(TerrainComp), nameof(TerrainComp.DoOperation))]
+        /// <summary>
+        /// The terrain's owner refuses operations near its blessed trees and tells whoever sent
+        /// them. This is the check that reaches players without the mod, as long as the owner
+        /// has it - which <see cref="Warden"/> sees to on a server.
+        /// </summary>
+        [HarmonyPatch(typeof(TerrainComp), nameof(TerrainComp.RPC_ApplyOperation))]
         private static class GuardTerrainOwner
         {
-            private static bool Prefix(Vector3 pos, TerrainOp.Settings modifier)
+            private static bool Prefix(TerrainComp __instance, long sender, ZPackage pkg)
             {
-                return modifier == null || !NearBlessedTree(pos, modifier.GetRadius());
+                if (TerrainGuardRadius.Value <= 0f || __instance.m_nview == null || !__instance.m_nview.IsOwner())
+                {
+                    return true;
+                }
+                int start = pkg.GetPos();
+                Vector3 pos = pkg.ReadVector3();
+                if (pkg.ReadBool())
+                {
+                    pkg.ReadVector3();
+                }
+                TerrainOp.Settings settings = TerrainOp.Settings.Deserialize(pkg);
+                pkg.SetPos(start);
+                if (settings == null || !NearBlessedTreeZDO(pos, settings.GetRadius()))
+                {
+                    return true;
+                }
+                if (ZRoutedRpc.instance != null)
+                {
+                    ZRoutedRpc.instance.InvokeRoutedRPC(sender, "ShowMessage", (int)MessageHud.MessageType.Center, "Odin's tree guards this ground");
+                }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Makes <see cref="GuardTerrainOwner"/> reach players without the mod. Every terrain
+        /// change is sent to the owner of the zone's terrain compiler, and the server hands that
+        /// ownership out every two seconds, once per peer (ZDOMan.ReleaseNearbyZDOS). So on the
+        /// server, after each hand-out, the compilers of the zones around a blessed tree near
+        /// that peer are taken back for the server itself, their zones are kept loaded (the way
+        /// the server keeps the zones around spawn) and the compilers are slipped into the list
+        /// of objects ZNetScene instantiates. The change then arrives at a real TerrainComp on
+        /// the server, where the guard refuses it. A zone with a blessed tree but no compiler
+        /// yet gets one from the server, before a player's first dig could create it as owner.
+        /// </summary>
+        private static class Warden
+        {
+            /// <summary>Guard radius plus the widest terrain operation, with room to spare.</summary>
+            private const float Reach = 16f;
+
+            /// <summary>How long a compiler stays instantiated after a peer was last near it.</summary>
+            private const float Forget = 10f;
+
+            private static readonly int CompilerPrefab = "_TerrainCompiler".GetStableHashCode();
+
+            /// <summary>The compilers held, each with the time a peer was last seen near it.</summary>
+            private static readonly Dictionary<ZDOID, float> held = new Dictionary<ZDOID, float>();
+            private static readonly HashSet<Vector2s> zones = new HashSet<Vector2s>();
+            private static readonly List<ZDO> sector = new List<ZDO>();
+            private static readonly List<ZDOID> stale = new List<ZDOID>();
+
+            [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.ReleaseNearbyZDOS))]
+            private static class TakeCompilers
+            {
+                private static void Postfix(ZDOMan __instance)
+                {
+                    if (TerrainGuardRadius.Value <= 0f || ZoneSystem.instance == null)
+                    {
+                        return;
+                    }
+                    zones.Clear();
+                    foreach (ZDO zdo in __instance.m_tempNearObjects)
+                    {
+                        if (IsBlessedTree(zdo))
+                        {
+                            AddZonesInReach(zdo.GetPosition());
+                        }
+                    }
+                    foreach (Vector2s zone in zones)
+                    {
+                        bool fresh = ZoneSystem.instance.PokeLocalZone(zone);
+                        sector.Clear();
+                        ZDOMan.instance.FindSectorObjects(zone, new SimulationDistance(0, 0, true), sector);
+                        ZDO compiler = sector.Find(z => z.GetPrefab() == CompilerPrefab);
+                        if (compiler == null && !fresh && ZoneSystem.instance.IsZoneLoaded(zone))
+                        {
+                            Heightmap hmap = Heightmap.FindHeightmap(ZoneSystem.GetZonePos(zone));
+                            TerrainComp comp = hmap != null ? hmap.GetAndCreateTerrainCompiler() : null;
+                            compiler = comp != null && comp.m_nview != null ? comp.m_nview.GetZDO() : null;
+                        }
+                        if (compiler != null)
+                        {
+                            Hold(compiler);
+                        }
+                    }
+                }
+            }
+
+            /// <summary>The zones whose ground lies within reach of a blessed tree at pos.</summary>
+            private static void AddZonesInReach(Vector3 pos)
+            {
+                Vector2s home = ZoneSystem.GetZone(pos);
+                float half = ZoneSystem.instance.m_zoneSize * 0.5f;
+                for (int dz = -1; dz <= 1; dz++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        Vector2s zone = new Vector2s(home.x + dx, home.y + dz);
+                        Vector3 centre = ZoneSystem.GetZonePos(zone);
+                        float x = Mathf.Max(Mathf.Abs(pos.x - centre.x) - half, 0f);
+                        float z = Mathf.Max(Mathf.Abs(pos.z - centre.z) - half, 0f);
+                        if (x * x + z * z < Reach * Reach)
+                        {
+                            zones.Add(zone);
+                        }
+                    }
+                }
+            }
+
+            private static void Hold(ZDO compiler)
+            {
+                long me = ZDOMan.GetSessionID();
+                if (compiler.GetOwner() != me)
+                {
+                    compiler.SetOwner(me);
+                }
+                held[compiler.m_uid] = Time.time;
+            }
+
+            /// <summary>
+            /// The hand-out gives a peer whatever the server owns outside the server's own area,
+            /// and every owner change sends the compiler's whole terrain data again. So a held
+            /// compiler counts as inside the server's area.
+            /// </summary>
+            [HarmonyPatch(typeof(ZDOMan), nameof(ZDOMan.IsInPeerActiveArea))]
+            private static class KeepOwnership
+            {
+                private static void Postfix(Vector3 point, long uid, ref bool __result)
+                {
+                    if (__result || held.Count == 0 || uid != ZDOMan.GetSessionID())
+                    {
+                        return;
+                    }
+                    foreach (ZDOID id in held.Keys)
+                    {
+                        ZDO zdo = ZDOMan.instance.GetZDO(id);
+                        if (zdo != null && zdo.GetPosition() == point)
+                        {
+                            __result = true;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            /// <summary>The held compilers count as near, so ZNetScene creates and keeps them.</summary>
+            [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.CreateObjects))]
+            private static class KeepCompilers
+            {
+                private static void Prefix(List<ZDO> currentNearObjects)
+                {
+                    if (held.Count == 0)
+                    {
+                        return;
+                    }
+                    stale.Clear();
+                    foreach (KeyValuePair<ZDOID, float> pair in held)
+                    {
+                        ZDO zdo = ZDOMan.instance.GetZDO(pair.Key);
+                        if (zdo == null || Time.time - pair.Value > Forget)
+                        {
+                            stale.Add(pair.Key);
+                        }
+                        else if (ZoneSystem.instance.IsZoneLoaded(zdo.GetSector()) && !currentNearObjects.Contains(zdo))
+                        {
+                            currentNearObjects.Add(zdo);
+                        }
+                    }
+                    foreach (ZDOID id in stale)
+                    {
+                        held.Remove(id);
+                    }
+                }
             }
         }
 
@@ -341,8 +753,8 @@ namespace OdinsTree
         {
             private static bool Prefix(Player __instance, ref bool __result)
             {
-                GameObject hover = __instance.GetHoverObject();
-                ZNetView nview = hover != null ? hover.GetComponentInParent<ZNetView>() : null;
+                GameObject aimed = AimedObject(__instance);
+                ZNetView nview = aimed != null ? aimed.GetComponentInParent<ZNetView>() : null;
                 GameObject next = nview != null ? NextKind(nview.gameObject) : null;
                 if (next == null)
                 {
@@ -371,59 +783,123 @@ namespace OdinsTree
         // ---- 4. Twerking grows saplings -----------------------------------------------------
 
         /// <summary>
-        /// A dodge that actually starts (stamina paid, timer consumed) moves every sapling within
-        /// reach closer to grown, by the time since the last dodge.
+        /// Counts crouch presses. <c>crouch</c> is true for one frame per press (the controller
+        /// sends the button's rising edge), so three of them within reach of each other start
+        /// the twerk, and it lasts until the presses stop.
         /// </summary>
-        [HarmonyPatch(typeof(Player), nameof(Player.UpdateDodge))]
-        private static class TwerkGrows
+        [HarmonyPatch(typeof(Player), nameof(Player.SetControls))]
+        private static class CountCrouches
         {
-            private static void Prefix(Player __instance, out bool __state)
+            private static void Prefix(Player __instance, bool crouch)
             {
-                __state = __instance.m_queuedDodgeTimer > 0f;
-            }
-
-            private static void Postfix(Player __instance, bool __state)
-            {
-                float seconds = TwerkGrowSeconds.Value;
-                if (!__state || __instance.m_queuedDodgeTimer != 0f || __instance != Player.m_localPlayer
-                    || seconds <= 0f || ZNet.instance == null)
+                if (!crouch || __instance != Player.m_localPlayer)
                 {
                     return;
                 }
                 float now = Time.time;
-                float interval = Mathf.Min(now - lastDodge, MaxDodgeInterval);
-                lastDodge = now;
-                foreach (SlowUpdate slow in SlowUpdate.GetAllInstaces().ToList())
+                crouches = now - lastCrouch <= MaxCrouchInterval ? crouches + 1 : 1;
+                lastCrouch = now;
+            }
+        }
+
+        private static bool Twerking =>
+            crouches >= TwerkCrouches && Time.time - lastCrouch <= MaxCrouchInterval;
+
+        /// <summary>
+        /// While the twerk lasts, every healthy sapling within reach glows green and its planting
+        /// time slides back by growTime × dt / TwerkGrowSeconds, so after TwerkGrowSeconds of
+        /// twerking it is grown whatever its age, and <see cref="Plant.Grow"/> is called.
+        /// </summary>
+        void Update()
+        {
+            Player player = Player.m_localPlayer;
+            float seconds = TwerkGrowSeconds.Value;
+            if (player == null || ZNet.instance == null || seconds <= 0f || !Twerking)
+            {
+                if (glowing.Count > 0)
                 {
-                    Plant plant = slow as Plant;
-                    ZNetView nview = plant != null ? plant.m_nview : null;
-                    if (nview == null || !nview.IsValid() || plant.m_grownPrefabs == null || plant.m_grownPrefabs.Length == 0
-                        || Utils.DistanceXZ(plant.transform.position, __instance.transform.position) > TwerkRadius)
+                    StopGlowing();
+                }
+                return;
+            }
+            float now = Time.time;
+            List<Plant> near = new List<Plant>();
+            foreach (SlowUpdate slow in SlowUpdate.GetAllInstaces())
+            {
+                Plant plant = slow as Plant;
+                ZNetView nview = plant != null ? plant.m_nview : null;
+                if (nview == null || !nview.IsValid() || plant.m_grownPrefabs == null || plant.m_grownPrefabs.Length == 0
+                    || Utils.DistanceXZ(plant.transform.position, player.transform.position) > TwerkRadius)
+                {
+                    continue;
+                }
+                plant.UpdateHealth(plant.TimeSincePlanted());
+                if (plant.GetStatus() != Plant.Status.Healthy)
+                {
+                    if (now - lastWhyNotGrowing > 2f)
                     {
-                        continue;
+                        lastWhyNotGrowing = now;
+                        player.Message(MessageHud.MessageType.TopLeft, plant.GetHoverText());
                     }
-                    plant.UpdateHealth(plant.TimeSincePlanted());
-                    if (plant.GetStatus() != Plant.Status.Healthy)
-                    {
-                        if (now - lastWhyNotGrowing > 2f)
-                        {
-                            lastWhyNotGrowing = now;
-                            __instance.Message(MessageHud.MessageType.TopLeft, plant.GetHoverText());
-                        }
-                        continue;
-                    }
-                    nview.ClaimOwnership();
-                    ZDO zdo = nview.GetZDO();
-                    float growTime = plant.GetGrowTime();
-                    long planted = zdo.GetLong(ZDOVars.s_plantTime, ZNet.instance.GetTime().Ticks);
-                    long shift = (long)(growTime * interval / seconds * TimeSpan.TicksPerSecond);
-                    zdo.Set(ZDOVars.s_plantTime, planted - shift);
-                    if (plant.TimeSincePlanted() > growTime)
-                    {
-                        plant.Grow();
-                    }
+                    continue;
+                }
+                near.Add(plant);
+            }
+            foreach (Plant plant in glowing.ToList())
+            {
+                if (plant == null || !near.Contains(plant))
+                {
+                    Unglow(plant);
                 }
             }
+            foreach (Plant plant in near)
+            {
+                Glow(plant);
+                plant.m_nview.ClaimOwnership();
+                ZDO zdo = plant.m_nview.GetZDO();
+                float growTime = plant.GetGrowTime();
+                long planted = zdo.GetLong(ZDOVars.s_plantTime, ZNet.instance.GetTime().Ticks);
+                long shift = (long)(growTime * Time.deltaTime / seconds * TimeSpan.TicksPerSecond);
+                zdo.Set(ZDOVars.s_plantTime, planted - shift);
+                // Lets the next slow update swap in the half-grown model without the 10 s wait.
+                plant.m_updateTime = 0f;
+                if (plant.TimeSincePlanted() > growTime)
+                {
+                    Unglow(plant);
+                    plant.Grow();
+                }
+            }
+        }
+
+        /// <summary>Tints a sapling green the way the game highlights a piece.</summary>
+        private static void Glow(Plant plant)
+        {
+            if (glowing.Contains(plant) || MaterialMan.instance == null)
+            {
+                return;
+            }
+            MaterialMan.instance.SetValue(plant.gameObject, ShaderProps._Color, TwerkGreen, true);
+            MaterialMan.instance.SetValue(plant.gameObject, ShaderProps._EmissionColor, TwerkGreen * 0.4f);
+            glowing.Add(plant);
+        }
+
+        private static void Unglow(Plant plant)
+        {
+            glowing.Remove(plant);
+            if (plant != null && MaterialMan.instance != null)
+            {
+                MaterialMan.instance.ResetValue(plant.gameObject, ShaderProps._Color);
+                MaterialMan.instance.ResetValue(plant.gameObject, ShaderProps._EmissionColor);
+            }
+        }
+
+        private static void StopGlowing()
+        {
+            foreach (Plant plant in glowing.ToList())
+            {
+                Unglow(plant);
+            }
+            glowing.Clear();
         }
     }
 }

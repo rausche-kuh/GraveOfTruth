@@ -7,7 +7,7 @@ build, the reference assemblies and the scripts are shared.
 `OdinsMissingPatch/` — a collection of configurable QOL tweaks (see `OdinsMissingPatch/CLAUDE.md`).
 `ThisIsValheim/` — doors are kicked open (see `ThisIsValheim/CLAUDE.md`).
 `ImmersiveEntrance/` — dungeon entrances show the dungeon behind them (see `ImmersiveEntrance/CLAUDE.md`).
-`OdinsTree/` — bless a tree so a tree house on it is safe; scaffold, plan in `OdinsTree/ROADMAP.md`.
+`OdinsTree/` — bless a tree so a tree house on it is safe (see `OdinsTree/CLAUDE.md`).
 
 ## Layout
 

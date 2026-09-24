@@ -1,39 +1,30 @@
 # Odin's Tree
 
-A tree house is only as safe as the tree under it. Odin's Tree lets you bless a tree so that
-nothing can fell it — and the blessing stays when the mod is gone.
+Bless a tree so nothing can fell it, and build your tree house on it.
 
-> **Early build:** this mod is developed heavily with the use of AI and has had little play
-> testing so far. Expect rough edges.
+> **Early build:** developed heavily with AI and barely play tested. Expect rough edges.
 
 ## What it does
 
-- **Bless a tree** — with the hammer's repair tool selected, left click a standing tree. It says
-  `This tree is blessed by Odin`, and axes, trolls, falling logs and fire no longer bring it
-  down. Left click again to lift the blessing. Hover a tree with the hammer out to see what a
-  click will do.
+- **Bless a tree** — hammer out, repair tool selected, left click a tree. Lightning strikes it
+  and from then on nothing damages it. Looking at it says `Blessed by Odin`. Click again to
+  lift the blessing.
 - **Safe ground** — the ground within 3 m of a blessed trunk (`TerrainGuardRadius`) cannot be
-  dug, raised, levelled or tilled. The hoe's ghost turns red, the pickaxe is refused.
-- **Pick the tree** — right click a tree that is not blessed with the hammer to turn it into the
-  next kind of its family: Birch1 → Birch2 → autumn birch, small beech → big beech, the three
-  Yggdrasil shoots, and so on. Whatever a sapling can grow into counts as a family, and
-  `Families` in the config adds more. A blessed tree never cycles, so the trunk under a house
-  stays put.
-- **Twerk it up** — dodge back and forth beside a sapling and every dodge pushes it closer to
-  grown; about fifteen seconds of solid effort (`TwerkGrowSeconds`) makes it a tree. Each dodge
-  costs its usual stamina. A sapling that cannot grow where it stands says why instead. Any
-  planted crop within reach grows the same way.
+  dug, raised, levelled or tilled, so the tree never sinks or lifts under your house.
+- **Pick the tree** — right click an unblessed tree with the hammer to turn it into the next
+  kind of its family (`Families` in the config adds more). A blessed tree never cycles.
+- **Twerk it up** — tap crouch three times in a row beside a sapling or crop. It glows green
+  while you keep it up, and after about fifteen seconds it is grown (`TwerkGrowSeconds`).
 
-## Without the mod
+## With and without the mod
 
-A blessed tree stays blessed for everyone, with or without the mod, and after you remove it:
-the blessing is stored the way the game stores any tree's health. Only the safe ground needs the
-mod — a player without it can still dig beside the trunk.
-
-## Multiplayer
-
-Client side; no server install. Blessing, cycling and growing work through the game's own world
-data, so every other player sees the result whether they have the mod or not.
+- The blessing, the new tree kind and the growth are stored the way the game stores any tree.
+  Every player sees them, with or without the mod, and they stay when the mod is removed.
+- The safe ground needs the mod. Install it on the dedicated server (or the hosting player's
+  game) and it holds for every player, including those without it. Without the mod on the
+  server, only players who have it are stopped from digging.
+- The game gives a player without the mod no way to see that a tree is blessed. Nearly infinite
+  health stays for vanilla clients.
 
 ## Install
 
