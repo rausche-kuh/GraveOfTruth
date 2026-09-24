@@ -47,17 +47,6 @@ AutoRepair and the repair button both ask `CanRepair`, so both pick it up. A swi
 
 ## Boss fights
 
-### Stamina costs are back while a boss health bar shows
-
-_CombatStamina — [stamina](docs/stamina.md)_
-
-`HuntPlayer()` bosses already count as "coming for you", but only while one targets _you_ and
-only within the tweak's radius — Moder circling, Bonemass slow and a boss on another player all
-leave free stamina on. Add a second rule: every cost applies while the boss health bar is on
-screen. The bar is `EnemyHud`'s boss hud; `EnemyHud.instance.ShowingBossHud()` (verify) or any
-`Character` with `IsBoss()` within `EnemyHud.m_maxShowDistanceBoss` is the same question.
-Switch `BossFights`, on by default.
-
 ### No world spawns during a boss fight
 
 _New tweak, BossArena — needs research first_

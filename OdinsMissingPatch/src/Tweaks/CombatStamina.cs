@@ -11,10 +11,11 @@ namespace OdinsMissingPatch
     /// swim or swing. The moment something hostile comes close, or something that has spotted
     /// you gives chase, every cost is back at full price, mid swing if need be.
     ///
-    /// Two things put you in combat: a hostile creature inside the threat radius, whether it has
-    /// noticed you or not, and an enraged enemy - one that is alerted and has you as its target -
-    /// at any distance. The second is what makes running from a troll cost stamina even once it
-    /// is 30m behind you.
+    /// Three things put you in combat: a hostile creature inside the threat radius, whether it has
+    /// noticed you or not, an enraged enemy - one that is alerted and has you as its target - at
+    /// any distance, and a boss health bar on screen. The second is what makes running from a
+    /// troll cost stamina even once it is 30m behind you; the third covers a boss that is not
+    /// coming for you right now - Moder circling, Bonemass lumbering, a boss after another player.
     /// </summary>
     internal sealed class CombatStamina : Tweak
     {
@@ -33,6 +34,7 @@ namespace OdinsMissingPatch
 
         private ConfigEntry<float> threatRadius;
         private ConfigEntry<bool> enragedEnemies;
+        private ConfigEntry<bool> bossFights;
         private ConfigEntry<bool> freeSprint;
         private ConfigEntry<bool> freeJump;
         private ConfigEntry<bool> freeSwim;
@@ -66,6 +68,9 @@ namespace OdinsMissingPatch
             enragedEnemies = config.Bind(Section, "EnragedEnemies", true,
                 "An enemy that has noticed you and is coming for you puts you in combat at any " +
                 "distance, not only inside ThreatRadius. Off means only the radius counts.");
+            bossFights = config.Bind(Section, "BossFights", true,
+                "Every cost applies while a boss health bar is on screen, whoever the boss is " +
+                "after and however far away it is.");
             freeSprint = config.Bind(Section, "FreeSprint", true,
                 "Sprinting costs nothing out of combat.");
             freeJump = config.Bind(Section, "FreeJump", true,
@@ -102,13 +107,22 @@ namespace OdinsMissingPatch
                 return inCombat;
             }
             lastCheck = Time.time;
-            inCombat = Enraged() || HostileWithin(player, threatRadius.Value);
+            inCombat = Enraged() || BossBarShowing() || HostileWithin(player, threatRadius.Value);
             return inCombat;
         }
 
         private bool Enraged()
         {
             return enragedEnemies.Value && Time.time - lastEnraged < EnragedMemory;
+        }
+
+        /// <summary>
+        /// The boss bar is the game's own "boss fight" verdict: an alerted boss within
+        /// EnemyHud.m_maxShowDistanceBoss (100m) of the local player.
+        /// </summary>
+        private bool BossBarShowing()
+        {
+            return bossFights.Value && EnemyHud.instance != null && EnemyHud.instance.ShowingBossHud();
         }
 
         /// <summary>

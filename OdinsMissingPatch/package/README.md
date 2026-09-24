@@ -35,7 +35,8 @@ because I want them, not because I can argue they are neutral:
   doubled by default.
 - **Combat stamina** — drops the stamina cost of sprinting, jumping, swimming, sneaking, building,
   chopping, mining and swinging while nothing hostile is within 25m and nothing that has noticed
-  you is coming for you. Free swimming means no drowning unless attacked, since drowning starts
+  you is coming for you. A boss fight always costs stamina: every cost is back while a boss health
+  bar is on screen. Free swimming means no drowning unless attacked, since drowning starts
   at empty stamina.
 - **Instant comfort** — sitting down grants `Rested` immediately, instead of after the game's ten
   seconds of Resting.

@@ -1,7 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.3.2
 
+- Combat stamina: boss fights always cost stamina. While a boss health bar is on screen every cost
+  is back, even when the boss is circling, slow or after another player. `BossFights` in the
+  Combat Stamina section turns it off.
 - Items a chest is marked to take now show their amount in yellow in the chest, so you can see its
   favourites at a glance. The Clear favourites button's tooltip still lists them all, including
   the ones the chest is currently out of.

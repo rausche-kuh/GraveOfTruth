@@ -30,3 +30,7 @@ CombatStamina.
   timer are fed from, and what `CombatStamina` reads its enraged signal from: alerted, and coming
   for you, whoever owns the monster. `HuntPlayer()` monsters (bosses, event creatures) are alerted
   permanently and target the closest player within 200m, so they report too.
+- The boss health bar: `EnemyHud.TestShow` shows a `Character.IsBoss()` hud while its `BaseAI` is
+  alerted and it is within `m_maxShowDistanceBoss` (100m) of the local player;
+  `EnemyHud.instance.ShowingBossHud()` (public) is whether any boss hud is up. `CombatStamina`'s
+  `BossFights` reads that.
