@@ -11,26 +11,9 @@ into the doc for the area, not here.
 
 ## Small and client side
 
-### Chest favourites get a subtle highlight
-
-*ChestFavorites / ChestButtons — [inventory-ui](docs/inventory-ui.md), [chests](docs/chests.md)*
-
-A chest's marked kinds are only listed in the Clear favourites button's tooltip today. Show them
-in the chest's grid: every slot whose item is of a marked kind gets its **amount text in yellow**
-(the game's own `InventoryElement.m_amount` `TMP_Text`, verify) instead of a border — the golden
-border stays the backpack's stack favourite, so the two never look alike. A marked kind the chest
-holds none of still has no slot, so the tooltip stays the full list.
-
-Same per-frame rule as the rest of the grid work: `UpdateContainer` runs every frame, so the pass
-has to be allocation free and only recolour when the chest or its marks changed. Reset the colour
-on slots that stop matching, since `InventoryGrid` reuses its elements.
-
-Open: should the backpack's stack favourite move from the golden border to the same yellow text,
-so there is one look for "favourite" everywhere?
-
 ### Chest amounts inline in the crafting panel
 
-*NearbyCrafting — [chests](docs/chests.md)*
+_NearbyCrafting — [chests](docs/chests.md)_
 
 Today an ingredient the chests have to pay for shows its amount in yellow and explains itself in
 a tooltip. Replace the tooltip with the numbers, right in the requirement slot:
@@ -42,7 +25,7 @@ if it does not, or shrink the font like the game does for quality levels).
 
 ### Shift + quick stack tops up the backpack
 
-*QuickStack — [chests](docs/chests.md)*
+_QuickStack — [chests](docs/chests.md)_
 
 `Shift` held while pressing the quick stack key runs the other direction for consumables: every
 **food, potion (mead) and ammo** stack in the backpack is filled up to its cap from the chests in
@@ -51,14 +34,9 @@ chest in range and only for those kinds. The item types come from `ItemDrop.Item
 (`Consumable`, `Ammo`, verify whether meads are `Consumable` too) and the list is a setting like
 KeepGearOnDeath's. Each chest that gave something glows with a count, as quick stack does.
 
-### Mod page: tested in co-op
-
-Done: the warning at the top of `package/README.md` now says that every tweak is played and
-tested in co-op.
-
 ## Station repair by groups
 
-*AutoRepair and the crafting panel's repair — [building-and-world](docs/building-and-world.md)*
+_AutoRepair and the crafting panel's repair — [building-and-world](docs/building-and-world.md)_
 
 Repairing a full kit means visiting four stations. Group them:
 
@@ -83,9 +61,9 @@ AutoRepair and the repair button both ask `CanRepair`, so both pick it up. A swi
 
 ### Stamina costs are back while a boss health bar shows
 
-*CombatStamina — [stamina](docs/stamina.md)*
+_CombatStamina — [stamina](docs/stamina.md)_
 
-`HuntPlayer()` bosses already count as "coming for you", but only while one targets *you* and
+`HuntPlayer()` bosses already count as "coming for you", but only while one targets _you_ and
 only within the tweak's radius — Moder circling, Bonemass slow and a boss on another player all
 leave free stamina on. Add a second rule: every cost applies while the boss health bar is on
 screen. The bar is `EnemyHud`'s boss hud; `EnemyHud.instance.ShowingBossHud()` (verify) or any
@@ -94,7 +72,7 @@ Switch `BossFights`, on by default.
 
 ### No world spawns during a boss fight
 
-*New tweak, BossArena — needs research first*
+_New tweak, BossArena — needs research first_
 
 While a boss is fighting (`IsBoss()`, alerted, within ~100m of a player), the ordinary world
 spawns stop around it, so a fight is the boss and not the boss plus drakes, deathsquitos or seekers
@@ -108,7 +86,7 @@ Research:
   once. Random events (`RandEventSystem`) are separate — decide whether a raid may start mid-fight.
 - The bosses' adds do not come from `SpawnSystem`, as far as known: Bonemass's blobs, Yagluth's
   and The Queen's seekers and Fader's minions are `SpawnAbility` projectiles/attacks on the boss
-  itself (verify per boss, and check for any boss that *does* rely on a `SpawnSystem` or a
+  itself (verify per boss, and check for any boss that _does_ rely on a `SpawnSystem` or a
   location `CreatureSpawner` around its altar). If all adds are `SpawnAbility`, blocking
   `SpawnSystem` is safe by construction.
 - The zone owner is not necessarily a player with the mod: on a mixed server a zone owned by an
@@ -117,7 +95,7 @@ Research:
 
 ## Item magnet
 
-*New tweak, ItemMagnet — [radial-menu](docs/radial-menu.md) for the animation*
+_New tweak, ItemMagnet — [radial-menu](docs/radial-menu.md) for the animation_
 
 A hotkey plays the Forsaken power animation (`m_zanim.SetTrigger("gpower")`, the one
 `Player.ActivateGuardianPower` uses, verify) and pulls every `ItemDrop` within reach towards the
@@ -135,7 +113,7 @@ Balance, so it never beats a cart:
 
 ## Boss markers
 
-*AutoPins / PinLooks / UniversalPins — [map-pins](docs/map-pins.md)*
+_AutoPins / PinLooks / UniversalPins — [map-pins](docs/map-pins.md)_
 
 Boss pins (`PinType.Boss`, set by a vegvisir via `Minimap.DiscoverLocation`) become
 **universal pins**: shared with every modded player the moment they are found and through map
@@ -148,7 +126,7 @@ game does to a boss pin on the boss's death before building anything.
 
 ## Enshrouded style sleeping
 
-*New tweak, SharedSleep — needs a server install*
+_New tweak, SharedSleep — needs a server install_
 
 Going to bed no longer waits for everybody:
 
@@ -163,6 +141,12 @@ so speeding it up is server side — this is the first tweak that needs the mod 
 it breaks the mod page's "nothing needs a server install" line unless it is kept optional and
 says so. Things that run on time (plant growth, smelters, fermenters, respawn timers) speed up
 with it, which is the point of a shorter night but should be stated.
+
+## Player Orbs
+
+Players should be visible at all times with a subtle but visible orb (small but brightly colored) in the direction of the player.
+This orb should only be visible when the player is far enough away. Ideally it should change it's color or disappear if the player is really far away
+this is meant as a visual hint to find other players more easily.
 
 **Credits:** the idea is copied from another mod. Which one has to be named on the mod page
 before any of it is written — ask.

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Items a chest is marked to take now show their amount in yellow in the chest, so you can see its
+  favourites at a glance. The Clear favourites button's tooltip still lists them all, including
+  the ones the chest is currently out of.
+
 ## 0.3.1
 
 - Auto pins reach everyone at once: a pin you get appears on the map of every other player

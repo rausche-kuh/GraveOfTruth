@@ -65,10 +65,15 @@
   fill, or an equipped item and a favourite look the same — four stretched `Image`s with no sprite,
   anchored to one side each and pivoted onto it, need no asset.
   `UpdateGui` rebuilds every element when the inventory changes size, and `UpdateInventory` calls
-  it every frame the screen is up, so a per-slot pass over it has to stay allocation free. Only
-  the backpack's stack flag is drawn there: a chest's marked kinds are a property of the chest and
-  can name a kind it holds none of, which has no slot, so they are listed in the Clear favourites
-  button's tooltip instead of shown half on the grid.
+  it every frame the screen is up, so a per-slot pass over it has to stay allocation free. The
+  backpack's stack flag is the border; a chest's marked kinds recolour the slot's amount instead
+  (`InventoryElement.m_amount`, a `TMP_Text` the game never colours, so a tint stays until it is
+  put back). `ChestFavorites.ShowMarks` recolours only when the chest, its ZDO's `DataRevision` or
+  the grid's first element changes - a chest saves both its items and its marks to the ZDO on
+  every change, and a rebuilt grid has new elements - and resets every slot first, since elements
+  are reused for whatever item lands in them. TextMeshPro is not in `lib/`: a `TMP_Text` is
+  reached as the `Graphic` it derives from, by name (`Find("res_amount")`) or through
+  `AccessTools.FieldRefAccess<T, Graphic>`, which accepts a base type of the field's.
 - `Player.TakeInput()` is false while any GUI is open, the inventory included; a hotkey that should
   work with the inventory open has to re-ask the chat, console, text input and menu itself.
   `KeyboardShortcut.IsDown` (BepInEx) refuses while any key outside the combination is held, i.e.

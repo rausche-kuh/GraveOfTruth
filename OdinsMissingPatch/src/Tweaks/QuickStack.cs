@@ -343,9 +343,8 @@ namespace OdinsMissingPatch
         /// equipped favourite still reads as equipped. Slots are rebuilt when an inventory
         /// changes size, so a border whose slot is gone is simply made again.
         ///
-        /// Only the backpack's own flag is drawn. A chest's marks are not: a marked kind the chest
-        /// holds none of has no slot to draw on, so a border would show half of them and hide the
-        /// rest - the panel's Clear favourites button names the whole list in its tooltip instead.
+        /// Only the backpack's own flag gets the border. A chest's marks show as a yellow amount
+        /// instead (ChestFavorites.ShowMarks), so the two favourites never look alike.
         /// </summary>
         [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
         private static class ShowFavorites

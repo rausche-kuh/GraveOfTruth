@@ -25,10 +25,10 @@ chests (NearbyCrafting, NearbyFuel, QuickStack, AddAll, ChestButtons).
   is QuickStack or ChestButtons), so a player who runs only one of them can still set it.
 - There are two favourites and they never mix: QuickStack's is a flag on one stack and only in
   the backpack, `ChestFavorites` is a list of item *kinds* on one chest. The same Alt-click sets
-  both - which one depends on the grid clicked - but only the backpack's is drawn on a slot. A
-  chest's marks are not: the list can name a kind the chest holds none of, which has no slot to
-  draw on, so a border would show some marks and hide others. They are shown whole or not at all,
-  in the Clear favourites button's tooltip.
+  both - which one depends on the grid clicked - and they are drawn differently so they never
+  look alike: the backpack's stack gets the golden border, a slot of a chest's marked kind gets its
+  amount in yellow (`ChestFavorites.ShowMarks`). The list can name a kind the chest holds none of,
+  which has no slot, so only the Clear favourites button's tooltip shows the marks whole.
 - Every chest write goes through `NearbyChests.Claim`: re-checks the in-reach rule (someone may
   have opened the chest since it was found), reloads the inventory from the ZDO, then claims
   ownership. `Find` hands out one reused list, so copy it before a loop that writes. The one

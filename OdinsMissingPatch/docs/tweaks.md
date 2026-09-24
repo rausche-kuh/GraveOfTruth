@@ -77,8 +77,9 @@ player's own save).
   frame), which quick stacking skips, as it does equipped items and the hotbar; the mark exists only
   in that inventory and is stripped from every stack that leaves it. The same Alt-click in an open
   chest's grid marks the *chest* for that kind of item (`ChestFavorites`, on the chest's ZDO): a
-  marked chest counts as holding it, and is filled before the chests that do. The marks get no
-  border of their own; the chest panel's Clear favourites button lists them in its tooltip. Read by
+  marked chest counts as holding it, and is filled before the chests that do. A slot of a marked
+  kind shows its amount in yellow; the chest panel's Clear favourites button lists every mark in
+  its tooltip, the ones the chest holds none of included. Read by
   Chest buttons' Fill the chest's stacks as well, so either tweak alone is enough for the marks to
   mean something.
 - **Nearby fuel** — the four manual add-fuel interactions (fire, smelter, oven, shield generator)
