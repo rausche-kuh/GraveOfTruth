@@ -87,8 +87,9 @@ because I want them, not because I can argue they are neutral:
   other ruined settlements, tar pits, dragon eggs, Dvergr excavations and watchtowers, ...)
   get an ordinary map pin when you come within 40m. Every pin you get appears on the map of
   every other player online at that moment, and when you join, their pins appear on yours.
-- **Pin looks** — those pins are coloured by their biome, and ore and place pins hide when the
-  large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
+- **Pin looks** — those pins are coloured by their biome, dungeons and dragon nests get icons of
+  their own (crypt, frost cave, dragon nest, any other entrance) that name the place when you
+  hover them, and ore and place pins hide when the large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
   other players", show or hide dungeon, ore and place pins.
 - **Death pins** — a death pin goes away by itself once your grave is gone, whoever emptied it,
   and a death that leaves no grave leaves no pin.

@@ -1,5 +1,6 @@
 using BepInEx.Configuration;
 using HarmonyLib;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,9 +14,11 @@ namespace OdinsMissingPatch
     /// the biome they stand in instead of the game's dim grey for shared pins, so a coloured pin
     /// reads as an auto pin and its biome at a glance. Ore and place pins disappear when the
     /// large map is zoomed out past their zoom setting, so the continent view is not a carpet of
-    /// hammers. Toggles beside the game's own at the bottom right of the large map show or hide
-    /// each category on both maps, the way the legend hides an icon. The shared-map button on the
-    /// large map still fades all of them together, and the legend still hides a whole icon.
+    /// hammers. Dungeon and dragon nest pins are drawn with an icon of their own instead of a
+    /// name, which the game's tooltip shows on hover. Toggles beside the game's own at the bottom
+    /// right of the large map show or hide each category on both maps, the way the legend hides
+    /// an icon. The shared-map button on the large map still fades all of them together, and the
+    /// legend still hides a whole icon.
     /// </summary>
     internal sealed class PinLooks : Tweak
     {
@@ -35,13 +38,15 @@ namespace OdinsMissingPatch
         private readonly ConfigEntry<float>[] zoom = new ConfigEntry<float>[4];
         private readonly ConfigEntry<bool>[] show = new ConfigEntry<bool>[4];
         private ConfigEntry<bool> mapToggles;
+        private ConfigEntry<bool> icons;
 
         internal override string Section => "Pin Looks";
 
         protected override string Summary =>
             "Pins that belong to nobody (auto pins, and what map tables share of them) are " +
-            "coloured by their biome, ore and place pins hide when the large map is zoomed far out, " +
-            "and toggles on the large map show or hide dungeon, ore and place pins.";
+            "coloured by their biome, dungeons and dragon nests get icons of their own, ore and " +
+            "place pins hide when the large map is zoomed far out, and toggles on the large map " +
+            "show or hide dungeon, ore and place pins.";
 
         protected override void Bind(ConfigFile config)
         {
@@ -63,6 +68,10 @@ namespace OdinsMissingPatch
             show[(int)Category.Dungeon] = BindShow(config, "ShowDungeons", "dungeon");
             show[(int)Category.Ore] = BindShow(config, "ShowOre", "ore");
             show[(int)Category.Place] = BindShow(config, "ShowPlaces", "place");
+            icons = config.Bind(Section, "Icons", true,
+                "Draw dungeon pins with an icon of their own - a crypt, a frost cave, any other " +
+                "entrance - and dragon egg pins with a nest, without a name on the map; hovering " +
+                "one on the large map names it.");
             OnSettingChanged(config, Toggles.Refresh);
         }
 
@@ -157,6 +166,39 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>
+        /// The icons of assets/icons that stand in for a pin's name, by the name token the pin was
+        /// made with - the one thing about a pin that survives the profile, a table and a
+        /// broadcast. The tokens are the game's own (Teleport.m_enterText of the entrance, the
+        /// dragon egg's item name).
+        /// </summary>
+        private static readonly Dictionary<string, string> IconsByName = new Dictionary<string, string>
+        {
+            { "$location_sunkencrypt", "map_crypt" },
+            { "$location_mountaincave", "map_ice_cave" },
+            { "$item_dragonegg", "map_dragons_nest" },
+        };
+
+        /// <summary>What a dungeon whose name has no icon of its own is drawn with.</summary>
+        private const string EntranceIcon = "map_entrance";
+
+        /// <summary>
+        /// The sprite a universal pin is drawn with instead of its type's - every dungeon pin, and
+        /// a place named by the dragon egg - or null when it keeps the vanilla icon and its name.
+        /// </summary>
+        internal static Sprite IconOf(Minimap.PinData pin)
+        {
+            if (!Instance.On || !Instance.icons.Value || !UniversalPins.TryGetCategory(pin, out Category category))
+            {
+                return null;
+            }
+            if (IconsByName.TryGetValue(pin.m_name, out string icon))
+            {
+                return PanelButtons.Icon(icon);
+            }
+            return category == Category.Dungeon ? PanelButtons.Icon(EntranceIcon) : null;
+        }
+
+        /// <summary>
         /// UpdatePins writes every drawn pin's colour on each run, and only runs when the map moved
         /// or a pin changed - so the tint goes on right after it, at the same rate. Culling turns
         /// the pin's marker off; the game never turns a marker back on itself, so this also does
@@ -195,8 +237,29 @@ namespace OdinsMissingPatch
                         }
                         continue;
                     }
-                    if (!on || pin.m_iconElement == null)
+                    if (pin.m_iconElement == null)
                     {
+                        continue;
+                    }
+                    // Put back as well as swapped, so switching Icons off shows the vanilla icon.
+                    Sprite icon = IconOf(pin);
+                    Sprite sprite = icon != null ? icon : pin.m_icon;
+                    if (pin.m_iconElement.sprite != sprite)
+                    {
+                        pin.m_iconElement.sprite = sprite;
+                    }
+                    if (!on)
+                    {
+                        continue;
+                    }
+                    if (icon != null)
+                    {
+                        // The icon is drawn in colour and says what the place is; Hover names it.
+                        pin.m_iconElement.color = new Color(1f, 1f, 1f, fade);
+                        if (name != null && name.PinNameGameObject != null)
+                        {
+                            name.PinNameGameObject.SetActive(false);
+                        }
                         continue;
                     }
                     Color colour = Instance.ColourOf(BiomeOf(pin));
@@ -313,6 +376,81 @@ namespace OdinsMissingPatch
         private static class BuildToggles
         {
             private static void Postfix(Minimap __instance) => Toggles.Build(__instance);
+        }
+
+        /// <summary>
+        /// A pin drawn with an icon instead of its name shows the name as the game's tooltip while
+        /// the pointer is on it in the large map. The pin markers take no raycasts - the map
+        /// image under them gets every click - so the hover is found here, by the marker's rect,
+        /// and handed to a UITooltip on the marker, which hides itself once the pointer leaves
+        /// that rect or the marker is destroyed. Mouse only, like the vanilla pin names.
+        /// </summary>
+        [HarmonyPatch(typeof(Minimap), "Update")]
+        private static class Hover
+        {
+            private static Minimap.PinData hovered;
+
+            private static void Postfix(Minimap __instance)
+            {
+                Minimap.PinData pin = null;
+                if (Instance.On && Instance.icons.Value && __instance.m_mode == Minimap.MapMode.Large
+                    && ZInput.IsMouseActive())
+                {
+                    pin = PinUnderPointer(__instance);
+                }
+                if (pin != hovered)
+                {
+                    hovered = pin;
+                    if (pin != null)
+                    {
+                        Show(pin);
+                    }
+                }
+            }
+
+            private static Minimap.PinData PinUnderPointer(Minimap map)
+            {
+                Vector2 pointer = ZInput.pointerPosition;
+                foreach (Minimap.PinData pin in map.m_pins)
+                {
+                    RectTransform marker = pin.m_uiElement;
+                    if (marker != null && marker.gameObject.activeInHierarchy
+                        && pin.m_iconElement != null && pin.m_iconElement.sprite != pin.m_icon
+                        && RectTransformUtility.RectangleContainsScreenPoint(marker, pointer)
+                        && IconOf(pin) != null)
+                    {
+                        return pin;
+                    }
+                }
+                return null;
+            }
+
+            private static void Show(Minimap.PinData pin)
+            {
+                GameObject marker = pin.m_uiElement.gameObject;
+                UITooltip tip = marker.GetComponent<UITooltip>();
+                if (tip == null)
+                {
+                    GameObject prefab = InventoryGui.instance != null ? PanelButtons.TooltipPrefab(InventoryGui.instance) : null;
+                    if (prefab == null)
+                    {
+                        return;
+                    }
+                    tip = marker.AddComponent<UITooltip>();
+                    tip.m_tooltipPrefab = prefab;
+                }
+                tip.m_topic = pin.m_name;
+                tip.m_text = "";
+                tip.OnHoverStart(marker);
+                // The window is made under the marker's nearest canvas, which is the map's and may
+                // clip it; the top canvas draws it over everything, the way an inventory tooltip is.
+                GameObject window = Traverse.Create(typeof(UITooltip)).Field("m_tooltip").GetValue<GameObject>();
+                Canvas canvas = marker.GetComponentInParent<Canvas>();
+                if (window != null && canvas != null && canvas.rootCanvas.transform != window.transform.parent)
+                {
+                    window.transform.SetParent(canvas.rootCanvas.transform, false);
+                }
+            }
         }
     }
 }

@@ -438,7 +438,7 @@ namespace OdinsMissingPatch
         /// <summary>
         /// The tooltip prefab the inventory slots use, for a button that was copied without one.
         /// </summary>
-        private static GameObject TooltipPrefab(InventoryGui gui)
+        internal static GameObject TooltipPrefab(InventoryGui gui)
         {
             InventoryGrid grid = gui.m_playerGrid;
             GameObject prefab = grid != null ? grid.m_elementPrefab : null;

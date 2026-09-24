@@ -13,6 +13,10 @@
   they are off it, so you can always tell which way your friends are. The mark turns pale blue as they
   get further away. Players beyond the area around you only show if they are visible on the map. Distances,
   size and colours are in the Player Marks section.
+- Pin looks: dungeon pins get icons of their own — a crypt for Sunken Crypts, an ice cave for
+  Frost Caves, a door for every other dungeon — and dragon egg pins a dragon's nest. These pins
+  no longer write their name on the map; hover one on the large map to see what it is. `Icons` in
+  the Pin Looks section switches back to the plain icons and names.
 
 ## 0.3.1
 

@@ -285,8 +285,10 @@ namespace OdinsMissingPatch
             Minimap.PinData pin = UniversalPins.Add(map, pos, category, type, name);
             if (announce)
             {
+                Sprite icon = PinLooks.IconOf(pin);
                 player.Message(MessageHud.MessageType.TopLeft,
-                    string.IsNullOrEmpty(name) ? "$msg_pin_added" : "$msg_pin_added: " + name, 0, pin.m_icon);
+                    string.IsNullOrEmpty(name) ? "$msg_pin_added" : "$msg_pin_added: " + name, 0,
+                    icon != null ? icon : pin.m_icon);
             }
             return true;
         }

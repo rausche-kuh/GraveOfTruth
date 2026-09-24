@@ -440,6 +440,28 @@ same way as the zoom does, so a hidden pin cannot be clicked either. Every chang
 (`Tweak.OnSettingChanged`) re-syncs the toggles and sets `m_pinUpdateRequired`; the tweak off
 hides the toggles and shows every pin.
 
+**Icons** (`Icons`, on by default): a dungeon pin and a dragon egg pin are drawn with a
+sprite out of `assets/icons` (loaded by `PanelButtons.Icon`) instead of the type's, picked by the
+pin's name token, the only thing about the pin that survives the profile, a table and a broadcast:
+`$location_sunkencrypt` the crypt, `$location_mountaincave` the ice
+cave, `$item_dragonegg` the nest, any other dungeon `map_entrance` (`PinLooks.IconOf`, also used
+for the top left message). `Tint` swaps `m_iconElement.sprite` and puts `m_icon` back when the
+switch is off; `m_type` and `m_icon` stay vanilla, so the legend, a player without the mod and a
+table all see the configured icon type. The sprites are coloured, so they get white at
+`m_sharedMapDataFade` instead of the biome tint, and their name is deactivated after
+`UpdatePins` turned it on. The name moves to a tooltip: the markers take no raycasts (the map
+image under them gets every click, `OnMapLeftUp`/`RightClick` then look for the closest pin), so
+`PinLooks.Hover`, a `Minimap.Update` postfix, finds the marker under the pointer by its rect in
+the large map with the mouse active and calls `OnHoverStart` on a `UITooltip` added to it (the
+window prefab borrowed from the inventory, `PanelButtons.TooltipPrefab`, topic = the name). The
+tooltip's own `LateUpdate` hides it once the pointer leaves that rect, and `OnDisable` when the
+marker goes. `OnHoverStart` puts the window under the marker's nearest canvas; it is moved to the
+root canvas so the map cannot clip it. The game's location name tokens were read out of
+`resources.assets` (the English localization): `location_forestcrypt` Burial Chambers,
+`location_sunkencrypt` Sunken Crypts, `location_mountaincave` Frost Caves, `location_forestcave`
+Troll Cave, `location_bearcave`, `location_mausoleum` Tomb of Lord Reto, `location_morkhalla`,
+`location_dvergrtown` Infested Mine, `location_morgenhole`, `location_thehole`, ...
+
 Icons are per category and vanilla: dungeons `Icon1` (house), ore `Icon3` (the orb), places
 `Icon0` (fire), `Icon4` (portal) kept for the portal feature; a value outside `Icon0..Icon4` falls back to the default (BepInEx
 cannot restrict an enum entry to a list — `AcceptableValueList<T>` needs `IEquatable<T>`). Because
@@ -468,7 +490,7 @@ left free for the player's own pins.
 | `src/Tweaks/SharedMapTable.cs` | section "Shared Map Table": `SyncRange` (64), `MinInterval` (30s); the registry, the check, `Unread`, `Lacks`, the silent read and write |
 | `src/Tweaks/AutoPins.cs` | section "Auto Pins": `Dungeons`/`Ore`/`Places`, `DiscoverRange` (40), `PinSpacing` (10), the three icons, `PlaceList`, `ExtraOre` (`Softtissue`), `SkipOre` (`TinOre`), `MinedOut`, `ShowMessage`, `Share`; the sweep, the place rules, the ore strike, the mined-out check, `Receive` |
 | `src/PinBroadcast.cs` | the two routed RPCs: `Send` (one pin to everybody), `RequestOnce` (ask everybody once per session), the handlers, the per-session registration |
-| `src/Tweaks/PinLooks.cs` | section "Pin Looks": a colour per biome, a zoom for dungeons, ore and places, `MapToggles` and `ShowDungeons`/`ShowOre`/`ShowPlaces`; the tint, the large map's toggles |
+| `src/Tweaks/PinLooks.cs` | section "Pin Looks": a colour per biome, a zoom for dungeons, ore and places, `MapToggles` and `ShowDungeons`/`ShowOre`/`ShowPlaces`, `Icons`; the tint and icons, the hover tooltip, the large map's toggles |
 | `src/Tweaks/DeathPins.cs` | section "Death Pins": `RemoveWithGrave`, `OnlyWithGrave`; the grave registry, the sweep, the no-grave check |
 | `src/Dev/MapCommands.cs` | Debug only: `omp_locations [filter]` (every `ZoneLocation`: name, biome, interior, game icon, discover label, entrance text, the place rule it falls under — also to the BepInEx log), `omp_pins`, `omp_pins_forget`, `omp_pins_clear` |
 
@@ -531,6 +553,13 @@ Built on Linux in Debug and Release; nothing below has been seen running. In ord
    finds the place again. C logs in later: A's and B's pins are on C's map a few seconds after
    spawning, without a message, and A and B get nothing back. A vanilla client on the same
    server sees no error in its log. Switching `Share` on mid-game triggers the request once.
+9. **Icons (2026-09-24)**: a burial chamber, a sunken crypt, a frost cave, a troll cave and a
+   drake nest show the entrance, crypt, ice cave, entrance and nest icon on both maps, without a
+   name, not greyed or tinted; hovering one on the large map shows the game's tooltip with the
+   place's name after half a second, over the map and not clipped, and it goes when the pointer
+   leaves; clicking and right clicking the pin still tick and remove it; the top left message on
+   discovery shows the new icon; switching `Icons` off brings back the vanilla icon and the name
+   without reopening the map; a table read or a broadcast gives the other player the same icons.
 
 Known limits: if the arrival hitch is noticed, the
 blob can be built off the main thread (copy `m_explored`/`m_exploredOthers`, pack and compress on
