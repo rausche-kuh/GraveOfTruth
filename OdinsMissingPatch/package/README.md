@@ -92,6 +92,9 @@ because I want them, not because I can argue they are neutral:
   other players", show or hide dungeon, ore and place pins.
 - **Death pins** — a death pin goes away by itself once your grave is gone, whoever emptied it,
   and a death that leaves no grave leaves no pin.
+- **Player marks** — a small glowing mark over every other player who is
+  behind a hill or a wall, or more than 50m away, and on the screen's edge in their direction when
+  they are off screen.
 
 ## Configuration
 

@@ -88,6 +88,8 @@ Balance, so it never beats a cart:
 - Items must be owned to be moved: claim each drop's `ZNetView` before moving it, the way
   pickup does (verify how `ItemDrop.Pickup` hands ownership over).
 
+  /home/hauke/Documents/Code/test/othervalheimmods/Valheim-Plugins/MagneticWishbone/ has some code which might be helpful for this
+
 ## Boss markers
 
 _AutoPins / PinLooks / UniversalPins — [map-pins](docs/map-pins.md)_
@@ -119,14 +121,7 @@ it breaks the mod page's "nothing needs a server install" line unless it is kept
 says so. Things that run on time (plant growth, smelters, fermenters, respawn timers) speed up
 with it, which is the point of a shorter night but should be stated.
 
-## Player Orbs
-
-Players should be visible at all times with a subtle but visible orb (small but brightly colored) in the direction of the player.
-This orb should only be visible when the player is far enough away. Ideally it should change it's color or disappear if the player is really far away
-this is meant as a visual hint to find other players more easily.
-
-**Credits:** the idea is copied from another mod. Which one has to be named on the mod page
-before any of it is written — ask.
+**Credits:** the idea is copied from https://thunderstore.io/c/valheim/p/Vapok/BetterSleepBruh/
 
 # Bugs
 

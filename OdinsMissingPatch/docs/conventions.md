@@ -45,3 +45,14 @@ subsystem docs add their own rules on top: see `chests.md`, `inventory-ui.md`, `
   `RemoveUnequipped`) is replaced by a prefix that returns false and runs the same loop with the
   tweak's predicate folded in, rather than pulling items out of the list around the original: a
   throw inside the original would leave the pulled items nowhere, and this is the death path.
+- A tweak that needs a Debug-only hook (`PlayerMarks` marking wards so it can be tried alone) is
+  declared `partial` and calls a `static partial void` method; the body lives in `src/Dev/` in a
+  second `partial` part of the same class. A Release build has no body, so the compiler drops the
+  call along with it — no flag, no `#if`, nothing of the dev code ships.
+- A colour the mod draws itself comes from the game's UI palette, so it fits in. There is no
+  palette in code (the text markup uses the named `orange` and `yellow`); these were read from the
+  `Image` and text colours in `_GameMain`'s bundle on 2026-09-24. Accents: ornament and
+  separator orange #FF8E00, selection amber #FFA300, bar and selection gold #FFD800, the map's
+  player marker #FFE200, soft amber #FFB75B (food icons, ship marker, highlighter), equipped blue
+  #60A8E5, the Bonus damage text #FFA03D. Darks: scroll panel brown #302114, braid line brown
+  #261E11, plus plain black backgrounds. Light: plain white; there is no cream text colour.

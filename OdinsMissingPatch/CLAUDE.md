@@ -3,7 +3,7 @@
 A collection of quality of life changes, each one its own configurable tweak. See the root
 `CLAUDE.md` for the shared build, the scripts and the environment.
 
-Twenty-five tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
+Twenty-six tweaks are in the source; `docs/tweaks.md` is the index of what each one does, its scope
 (client side, world state, character) and which deep note covers it. Most are client side: the
 chest tweaks, `EndlessFuel` and `SharedMapTable` write world state, `PowerPicker` and `AutoPins`
 write the character.

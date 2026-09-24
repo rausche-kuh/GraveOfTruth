@@ -8,6 +8,11 @@
 - Items a chest is marked to take now show their amount in yellow in the chest, so you can see its
   favourites at a glance. The Clear favourites button's tooltip still lists them all, including
   the ones the chest is currently out of.
+- Player marks: every other player gets a small glowing gold and orange mark, with a thin gold ring, a rugged dark outline and a few drifting sparks, over
+  their head once they are out of sight or more than 50m away, and on the edge of the screen when
+  they are off it, so you can always tell which way your friends are. The mark turns pale blue as they
+  get further away. Players beyond the area around you only show if they are visible on the map. Distances,
+  size and colours are in the Player Marks section.
 
 ## 0.3.1
 

@@ -44,6 +44,7 @@ namespace OdinsMissingPatch
             AutoPins.Instance,
             PinLooks.Instance,
             DeathPins.Instance,
+            PlayerMarks.Instance,
         };
 
         void Awake()
