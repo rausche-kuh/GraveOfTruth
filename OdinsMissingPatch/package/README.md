@@ -2,6 +2,8 @@
 
 > **Warning:** this mod is developed heavily with the use of AI, and many of its ideas and even source
 > code is copied from other mods.
+>
+> Every tweak is actively played and tested in co-op, not only in single player.
 
 The patch Odin forgot: my personal take on the quality of life changes Valheim should have shipped
 years ago, in one mod. Nothing needs a server install.

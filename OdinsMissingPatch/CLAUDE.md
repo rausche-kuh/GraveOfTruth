@@ -25,6 +25,7 @@ write the character.
 | `src/Translations.cs`      | Hands `assets/translations.csv` to the game's localization on every language setup.                                                                                                                  |
 | `assets/icons/`            | The button icons, 64px white-on-transparent PNGs, shipped beside the DLL. Gale flattens the folder on install, so `PanelButtons.Icon` looks in `icons/` and then beside the DLL.                     |
 | `assets/translations.csv`  | Every word the mod shows, one row per `$omp_` token, one column per language                                                                                                                         |
+| `ROADMAP.md`               | What comes next, with the research each entry needs first, and the known bugs.                                                                                                                       |
 | `package/`                 | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`).                                                           |
 
 ## The rules that always apply

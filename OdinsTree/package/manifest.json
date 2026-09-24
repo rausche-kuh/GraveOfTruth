@@ -1,0 +1,9 @@
+{
+    "name": "OdinsTree",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/rausche-kuh/valheimmods",
+    "description": "Bless a tree with your hammer and it never falls: the tree house you build on it is safe, even without the mod.",
+    "dependencies": [
+        "denikson-BepInExPack_Valheim-5.4.2350"
+    ]
+}
