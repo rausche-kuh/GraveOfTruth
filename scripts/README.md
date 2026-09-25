@@ -10,6 +10,7 @@ so the two sets are interchangeable on the same checkout.
 | `deploy` | Build and install into your mod manager profile. |
 | `bump` | Raise a mod's version for a release and close off its changelog. |
 | `package` | Build the Thunderstore zips in `dist/`. |
+| `publish` | Upload every version that is not on Thunderstore and Hexium yet (Linux only). |
 | `decompile` | Dump the game's own C# into `decompiled/` for API lookup. |
 | `clean` | Delete what the other five produced. |
 
@@ -27,6 +28,7 @@ so the two sets are interchangeable on the same checkout.
 ./scripts/deploy.sh
 ./scripts/bump.sh
 ./scripts/package.sh
+./scripts/publish.sh
 ./scripts/decompile.sh
 ./scripts/clean.sh
 ```
@@ -44,6 +46,7 @@ also works once `setup` has run.
 | BepInEx | Installed into a profile by a mod manager — [Gale](https://github.com/Kesomannen/gale) or r2modman. |
 | binutils | Linux only, for `strings`; used just to read the Unity and BepInEx versions. Optional. |
 | `python3` or `zip` | Linux only, for `package.sh`. |
+| `python3` and `curl` | Linux only, for `publish.sh`. |
 
 No Mono, no Wine on Linux: the game assemblies are `net472` references and the NuGet package
 `Microsoft.NETFramework.ReferenceAssemblies` supplies the framework, so the .NET 8 SDK builds the
@@ -112,7 +115,7 @@ confirmation it writes all three places a version lives:
 
 A minor bump zeroes the patch, a major one zeroes both. If there is nothing under `## Unreleased`
 it says so before asking, since that release would show up on Thunderstore with no notes. Nothing
-is built, committed or published — run `package` afterwards and upload the zip.
+is built, committed or published — commit, then run `publish`.
 
 ## `package` — Thunderstore zips
 
@@ -137,6 +140,44 @@ shipped yet. `<Mod>/README.md` is the dev facing one and is not shipped.
 
 Only bump `VERSION` for an actual Thunderstore release, and use `bump` above to do it.
 Check `dependencies` in that mod's `package/manifest.json` against the current BepInEx pack first.
+
+## `publish` — upload to Thunderstore and Hexium (Linux only)
+
+```bash
+./scripts/publish.sh [-n|--dry-run] [-y|--yes] [mod ...]
+```
+
+Asks both sites whether each mod's current `VERSION` is already up
+(`/api/experimental/package/rauschekuh/<Mod>/<version>/`), then packages and uploads only what is
+missing — a version that is out is never built or sent again, and after a half failed run the next
+one sends just the rest. The usual release is `bump`, commit, `publish`; with no mod names it
+checks every mod, so a bare `./scripts/publish.sh` is also "is everything out?".
+
+Before anything is sent it refuses a version whose `## <version>` heading is missing from the
+changelog (`bump` was not run), checks the Thunderstore categories against the site's list, warns
+about uncommitted changes in the mod, prints the plan and waits for a `y`. `--dry-run` stops after
+the plan, `--yes` skips the question.
+
+Hexium is a Thunderstore fork with the same API and zip layout, so the same zip goes to both.
+What differs per site is the categories, which each mod keeps in `package/publish.json` (not
+shipped):
+
+```json
+{
+    "thunderstore": ["client-side", "tweaks"],
+    "hexium": ["Client-only"]
+}
+```
+
+Thunderstore takes slugs (`client-side`, the list is at
+`https://thunderstore.io/api/experimental/community/valheim/category/`), Hexium takes names, plus
+the side categories its listing leaves out: `Client-only`, `Client & Server`, `Client (& Server)`,
+`Server-only`. A site missing from the file is not published to, and a mod without the file is
+never published — add one to publish a new mod.
+
+The tokens come from `THUNDERSTORE_TOKEN` and `HEXIUM_TOKEN`, or from a gitignored `.publish.env`
+at the repo root with those two `NAME=value` lines. Thunderstore's is a service account token
+(team settings, *Service Accounts*), Hexium's an API token from the team page on valheim.hexium.gg.
 
 ## `decompile` — read the game's API
 
@@ -170,6 +211,20 @@ Note that `Assembly-CSharp.dll` is a ~23 KB stub — the game's code is in `asse
 Removes each mod's `bin/` and `obj/` plus `dist/`. `-Deployed` / `--deployed` also removes the mods
 from the profile they were installed into, and `-All` / `--all` also removes the shared `lib/`,
 `decompiled/` and `Valheim.props` — after that, `setup` has to run again before anything builds.
+
+## `icon` — square up a map icon (Linux only)
+
+```bash
+./scripts/icon.sh [-s 64] [-t 8] [-o out.png] image.png [image.png ...]
+```
+
+Cuts the transparent padding off an icon, scales it so its longer side fills the canvas and centres
+it on a transparent `64x64` square, so it touches at least two opposite edges. Map pins are drawn at
+one fixed size, so an icon with more padding shows up smaller in game; run every map icon through
+this and they match. The input can be any size — a full size render works best, since a small one
+gets scaled up. Without `-o` each image is overwritten in place. `-s` changes the output size, `-t`
+the alpha (0-255) a pixel needs to count as part of the icon, so a faint glow does not keep padding
+alive. Needs ImageMagick 7 (`magick`).
 
 ## Adding a mod
 

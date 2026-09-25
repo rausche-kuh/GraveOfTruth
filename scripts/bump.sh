@@ -135,4 +135,4 @@ awk -v v="$next" '
 ' "$changelog" > "$changelog.tmp" && mv "$changelog.tmp" "$changelog"
 
 ok "$mod is now $next"
-info 'Next: ./scripts/package.sh '"$mod"'  then upload dist/'"$mod"'-'"$next"'.zip'
+info 'Next: commit, then ./scripts/publish.sh '"$mod"
