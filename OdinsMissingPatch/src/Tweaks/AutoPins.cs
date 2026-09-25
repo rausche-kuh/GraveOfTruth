@@ -772,7 +772,7 @@ namespace OdinsMissingPatch
 
         private static float nextSweep;
 
-        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPatch(typeof(Player), nameof(Player.Update))]
         private static class Sweep
         {
             private static void Postfix(Player __instance)

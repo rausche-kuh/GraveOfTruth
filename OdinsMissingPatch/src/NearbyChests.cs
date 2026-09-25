@@ -239,6 +239,7 @@ namespace OdinsMissingPatch
         }
 
         [HarmonyPatch(typeof(Inventory), nameof(Inventory.CountItems))]
+        [Serves(typeof(NearbyCrafting), typeof(NearbyFuel), typeof(AddAll))]
         private static class CountChests
         {
             private static void Postfix(Inventory __instance, string name, int quality, bool matchWorldLevel, ref int __result)
@@ -252,6 +253,7 @@ namespace OdinsMissingPatch
         }
 
         [HarmonyPatch(typeof(Inventory), nameof(Inventory.HaveItem), new[] { typeof(string), typeof(bool) })]
+        [Serves(typeof(NearbyCrafting), typeof(NearbyFuel), typeof(AddAll))]
         private static class HaveInChests
         {
             private static void Postfix(Inventory __instance, string name, bool matchWorldLevel, ref bool __result)
@@ -270,6 +272,7 @@ namespace OdinsMissingPatch
         /// back through this prefix and pass straight through, not being the backpack.
         /// </summary>
         [HarmonyPatch(typeof(Inventory), nameof(Inventory.RemoveItem), new[] { typeof(string), typeof(int), typeof(int), typeof(bool) })]
+        [Serves(typeof(NearbyCrafting), typeof(NearbyFuel), typeof(AddAll))]
         private static class TakeFromChests
         {
             private static void Prefix(Inventory __instance, string name, ref int amount, int itemQuality, bool worldLevelBased)
@@ -395,7 +398,9 @@ namespace OdinsMissingPatch
         /// The Piece may sit on a parent (a ship's hold, a cart), so it is looked up once here
         /// rather than on every query.
         /// </summary>
-        [HarmonyPatch(typeof(Container), "Awake")]
+        [HarmonyPatch(typeof(Container), nameof(Container.Awake))]
+        [Serves(typeof(QuickStack), typeof(AddAll), typeof(NearbyFuel), typeof(NearbyCrafting))]
+        [LoadHook]
         private static class Register
         {
             private static void Postfix(Container __instance)
@@ -414,6 +419,7 @@ namespace OdinsMissingPatch
         }
 
         [HarmonyPatch(typeof(Container), nameof(Container.GetHoverText))]
+        [Serves(typeof(QuickStack), typeof(AddAll), typeof(NearbyFuel), typeof(NearbyCrafting), Optional = true)]
         private static class HoverText
         {
             private static void Postfix(Container __instance, ref string __result)
@@ -440,7 +446,8 @@ namespace OdinsMissingPatch
         /// nearby tweaks is on, the
         /// clear button while the chest's favourites mean anything and the chest carries some.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateContainer))]
+        [Serves(typeof(QuickStack), typeof(AddAll), typeof(NearbyFuel), typeof(NearbyCrafting), typeof(ChestButtons), Optional = true)]
         private static class PanelButton
         {
             private static readonly TextButton NearbyUse = new TextButton("OMP_NearbyUse", Toggle);

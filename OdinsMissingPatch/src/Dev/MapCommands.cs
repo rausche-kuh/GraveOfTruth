@@ -20,6 +20,7 @@ namespace OdinsMissingPatch
         /// omp_pins_clear takes every universal pin off the local map.
         /// </summary>
         [HarmonyPatch(typeof(Terminal), nameof(Terminal.InitTerminal))]
+        [Always]
         private static class Commands
         {
             private static void Postfix()

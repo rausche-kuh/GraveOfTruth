@@ -137,7 +137,7 @@ namespace OdinsMissingPatch
         /// currently opening. The list is built afresh on every open, so nothing is cached and a
         /// power unlocked since is simply there the next time.
         /// </summary>
-        [HarmonyPatch(typeof(RadialBase), "ConstructRadial")]
+        [HarmonyPatch(typeof(RadialBase), nameof(RadialBase.ConstructRadial))]
         private static class TopCategory
         {
             private static void Prefix(RadialBase __instance, List<RadialMenuElement> elements)

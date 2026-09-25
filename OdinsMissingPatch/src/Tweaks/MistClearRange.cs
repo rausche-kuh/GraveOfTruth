@@ -78,7 +78,7 @@ namespace OdinsMissingPatch
         /// switches off and on again - the wisp fountain does that with its nearby-wisps object -
         /// which would otherwise come back at whatever scale it was switched off with.
         /// </summary>
-        [HarmonyPatch(typeof(Demister), "OnEnable")]
+        [HarmonyPatch(typeof(Demister), nameof(Demister.OnEnable))]
         private static class ScaleDemister
         {
             private static void Postfix(Demister __instance)

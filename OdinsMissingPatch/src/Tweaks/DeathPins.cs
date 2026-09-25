@@ -118,7 +118,7 @@ namespace OdinsMissingPatch
         /// <summary>Set by the local player's grave being set up during their own OnDeath.</summary>
         private static bool graveMade;
 
-        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPatch(typeof(Player), nameof(Player.Update))]
         private static class Sweep
         {
             private static void Postfix(Player __instance)
@@ -136,7 +136,8 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(TombStone), "Awake")]
+        [HarmonyPatch(typeof(TombStone), nameof(TombStone.Awake))]
+        [LoadHook]
         private static class RegisterGrave
         {
             private static void Postfix(TombStone __instance)

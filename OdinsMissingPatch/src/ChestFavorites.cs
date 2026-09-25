@@ -182,7 +182,8 @@ namespace OdinsMissingPatch
         /// recolour starts by putting the game's colour back on each slot, since the grid reuses
         /// its elements for whatever item lands in them.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateContainer))]
+        [Serves(typeof(QuickStack), typeof(ChestButtons), Optional = true)]
         private static class ShowMarks
         {
             /// <summary>NearbyCrafting's yellow, the mod's colour for "a chest is involved".</summary>

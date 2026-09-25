@@ -3,7 +3,9 @@
 > **Warning:** this mod is developed heavily with the use of AI, and many of its ideas and even source
 > code is copied from other mods.
 >
-> Every tweak is actively played and tested in co-op, not only in single player.
+> The mod is actively tested, but co-op playtime may only come every other day. Bugs I find get
+> patched, yet a release might not be tested in co-op until a week after it ships. Consider this
+> an alpha.
 
 The patch Odin forgot: my personal take on the quality of life changes Valheim should have shipped
 years ago, in one mod. Nothing needs a server install.
@@ -87,9 +89,9 @@ because I want them, not because I can argue they are neutral:
   other ruined settlements, tar pits, dragon eggs, Dvergr excavations and watchtowers, ...)
   get an ordinary map pin when you come within 40m. Every pin you get appears on the map of
   every other player online at that moment, and when you join, their pins appear on yours.
-- **Pin looks** — those pins are coloured by their biome, dungeons and dragon nests get icons of
-  their own (crypt, frost cave, dragon nest, any other entrance) that name the place when you
-  hover them, and ore and place pins hide when the large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
+- **Pin looks** — those pins are coloured by their biome, dungeons, dragon nests, fuling villages
+  and tar pits get icons of their own (burial chambers, troll cave, crypt, frost cave, winding
+  tunnels, any other entrance) that name the place when you hover them, and ore and place pins hide when the large map is zoomed far out. Toggles at the bottom right of the large map, beside "Visible to
   other players", show or hide dungeon, ore and place pins.
 - **Death pins** — a death pin goes away by itself once your grave is gone, whoever emptied it,
   and a death that leaves no grave leaves no pin.
@@ -102,6 +104,13 @@ because I want them, not because I can argue they are neutral:
 `BepInEx/config/rauschekuh.odinsmissingpatch.cfg`, written on first run. Every tweak has an
 `Enabled` switch; the ranges have a multiplier (`1` is vanilla), and the rest have the settings
 named above. Changes apply while the game runs, including from an in-game config manager.
+
+A tweak that is switched off when the game starts does not touch the game at all, so if one
+clashes with another mod, switch it off and restart and both run side by side. Switching such a
+tweak on later mostly works at once; the few that hook into things as the world loads (the
+chest tweaks, Death Pins, Shared Map Table, Pin Looks, Auto Pins) wait for the next
+start. If a game update breaks a tweak, only that tweak switches itself off, and the BepInEx
+log says which one.
 
 ## Translations (AI generated)
 

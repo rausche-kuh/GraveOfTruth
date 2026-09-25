@@ -71,7 +71,7 @@ namespace OdinsMissingPatch
         /// out (PanelButtons.LayoutInventoryColumn, where ChestButtons' fill your stacks comes
         /// first).
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGui), "UpdateInventory", new[] { typeof(Player) })]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateInventory), new[] { typeof(Player) })]
         private static class Panel
         {
             private static Button stackNearby;

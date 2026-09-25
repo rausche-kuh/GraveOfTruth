@@ -63,7 +63,7 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>The fuel switch of a smelter or blast furnace; a kiln has none.</summary>
-        [HarmonyPatch(typeof(Smelter), "OnAddFuel")]
+        [HarmonyPatch(typeof(Smelter), nameof(Smelter.OnAddFuel))]
         private static class SmelterScope
         {
             private static void Prefix(Humanoid user, out bool __state) => __state = Enter(user);
@@ -72,7 +72,7 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>The fuel switch of a cooking station that burns fuel, i.e. an oven.</summary>
-        [HarmonyPatch(typeof(CookingStation), "OnAddFuelSwitch")]
+        [HarmonyPatch(typeof(CookingStation), nameof(CookingStation.OnAddFuelSwitch))]
         private static class OvenScope
         {
             private static void Prefix(Humanoid user, out bool __state) => __state = Enter(user);
@@ -81,7 +81,7 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>The fuel switch of a shield generator, which takes any of several fuels.</summary>
-        [HarmonyPatch(typeof(ShieldGenerator), "OnAddFuel")]
+        [HarmonyPatch(typeof(ShieldGenerator), nameof(ShieldGenerator.OnAddFuel))]
         private static class ShieldGeneratorScope
         {
             private static void Prefix(Humanoid user, out bool __state) => __state = Enter(user);

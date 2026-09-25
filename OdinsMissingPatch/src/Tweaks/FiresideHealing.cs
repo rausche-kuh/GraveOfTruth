@@ -87,7 +87,7 @@ namespace OdinsMissingPatch
         /// put aside whether the method returned or threw - a stale amount would otherwise be
         /// picked up by the next heal the player gets from anywhere.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "UpdateFood")]
+        [HarmonyPatch(typeof(Player), nameof(Player.UpdateFood))]
         private static class HealForComfort
         {
             private static void Prefix(Player __instance, float dt, bool forceUpdate, out float __state)

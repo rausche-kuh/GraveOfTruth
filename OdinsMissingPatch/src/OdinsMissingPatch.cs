@@ -1,7 +1,6 @@
 using BepInEx;
 using HarmonyLib;
 using System.Linq;
-using System.Reflection;
 
 namespace OdinsMissingPatch
 {
@@ -49,14 +48,16 @@ namespace OdinsMissingPatch
 
         void Awake()
         {
+            Patcher.Map(Tweaks, Logger);
             foreach (Tweak tweak in Tweaks)
             {
-                tweak.Setup(Config);
+                tweak.Setup(Config, Patcher.MayNeedRestart(tweak));
             }
 
-            // Every patch is applied once, whatever the config says, and asks its own tweak
-            // whether it is on before it does anything - so the toggles work while the game runs.
-            Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), GUID);
+            // Only the tweaks switched on get their patches, each on its own, so a tweak switched
+            // off leaves the game code it would touch to other mods, and a patch a game update
+            // broke takes down only the tweaks that need it.
+            Patcher.Apply(new Harmony(GUID), Tweaks);
 
             string on = string.Join(", ", Tweaks.Where(t => t.On).Select(t => t.Section).ToArray());
             Logger.LogInfo(on.Length > 0 ? "tweaks on: " + on : "every tweak is switched off");

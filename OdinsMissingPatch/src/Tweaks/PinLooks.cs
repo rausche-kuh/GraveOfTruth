@@ -44,7 +44,7 @@ namespace OdinsMissingPatch
 
         protected override string Summary =>
             "Pins that belong to nobody (auto pins, and what map tables share of them) are " +
-            "coloured by their biome, dungeons and dragon nests get icons of their own, ore and " +
+            "coloured by their biome, dungeons and some places get icons of their own, ore and " +
             "place pins hide when the large map is zoomed far out, and toggles on the large map " +
             "show or hide dungeon, ore and place pins.";
 
@@ -69,8 +69,9 @@ namespace OdinsMissingPatch
             show[(int)Category.Ore] = BindShow(config, "ShowOre", "ore");
             show[(int)Category.Place] = BindShow(config, "ShowPlaces", "place");
             icons = config.Bind(Section, "Icons", true,
-                "Draw dungeon pins with an icon of their own - a crypt, a frost cave, any other " +
-                "entrance - and dragon egg pins with a nest, without a name on the map; hovering " +
+                "Draw dungeon pins with an icon of their own - burial chambers, a troll cave, a crypt, " +
+                "a frost cave, winding tunnels, any other entrance - and dragon eggs, fuling villages " +
+                "and tar pits with theirs, without a name on the map; hovering " +
                 "one on the large map names it.");
             OnSettingChanged(config, Toggles.Refresh);
         }
@@ -169,13 +170,18 @@ namespace OdinsMissingPatch
         /// The icons of assets/icons that stand in for a pin's name, by the name token the pin was
         /// made with - the one thing about a pin that survives the profile, a table and a
         /// broadcast. The tokens are the game's own (Teleport.m_enterText of the entrance, the
-        /// dragon egg's item name).
+        /// dragon egg's item name) or AutoPins' for the places it recognises.
         /// </summary>
         private static readonly Dictionary<string, string> IconsByName = new Dictionary<string, string>
         {
+            { "$location_forestcrypt", "map_chamber" },
+            { "$location_forestcave", "map_troll" },
             { "$location_sunkencrypt", "map_crypt" },
             { "$location_mountaincave", "map_ice_cave" },
+            { "$location_thehole", "map_winding_tunnels" },
             { "$item_dragonegg", "map_dragons_nest" },
+            { "$omp_place_fulingvillage", "map_fuling_village" },
+            { "$omp_place_tarpit", "map_tar_pit" },
         };
 
         /// <summary>What a dungeon whose name has no icon of its own is drawn with.</summary>
@@ -183,7 +189,7 @@ namespace OdinsMissingPatch
 
         /// <summary>
         /// The sprite a universal pin is drawn with instead of its type's - every dungeon pin, and
-        /// a place named by the dragon egg - or null when it keeps the vanilla icon and its name.
+        /// a place IconsByName knows (dragon eggs, fuling villages, tar pits) - or null when it keeps the vanilla icon and its name.
         /// </summary>
         internal static Sprite IconOf(Minimap.PinData pin)
         {
@@ -205,7 +211,7 @@ namespace OdinsMissingPatch
         /// that for every universal pin that is not culled, including after the tweak is switched
         /// off.
         /// </summary>
-        [HarmonyPatch(typeof(Minimap), "UpdatePins")]
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.UpdatePins))]
         private static class Tint
         {
             private static void Postfix(Minimap __instance)
@@ -372,7 +378,8 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(Minimap), "Start")]
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.Start))]
+        [LoadHook]
         private static class BuildToggles
         {
             private static void Postfix(Minimap __instance) => Toggles.Build(__instance);
@@ -385,7 +392,7 @@ namespace OdinsMissingPatch
         /// and handed to a UITooltip on the marker, which hides itself once the pointer leaves
         /// that rect or the marker is destroyed. Mouse only, like the vanilla pin names.
         /// </summary>
-        [HarmonyPatch(typeof(Minimap), "Update")]
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
         private static class Hover
         {
             private static Minimap.PinData hovered;

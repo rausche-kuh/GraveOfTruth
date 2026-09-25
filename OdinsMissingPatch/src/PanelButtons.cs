@@ -243,7 +243,8 @@ namespace OdinsMissingPatch
         /// column is emptied and each owner lets go of its own, to make them afresh on the new
         /// screen the first time it needs them.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGui), "OnDestroy")]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.OnDestroy))]
+        [Serves(typeof(ChestButtons), typeof(InventoryButtons))]
         private static class ScreenDestroyed
         {
             private static void Postfix()

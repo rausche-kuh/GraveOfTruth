@@ -470,7 +470,7 @@ namespace OdinsMissingPatch
         /// The enemy HUD draws the name plates over players' heads, straight in screen positions,
         /// and hides with the rest of the HUD - the right canvas and the right moment for the dots.
         /// </summary>
-        [HarmonyPatch(typeof(EnemyHud), "LateUpdate")]
+        [HarmonyPatch(typeof(EnemyHud), nameof(EnemyHud.LateUpdate))]
         private static class DrawMarks
         {
             private static void Postfix(EnemyHud __instance)

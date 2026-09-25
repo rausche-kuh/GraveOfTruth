@@ -59,7 +59,7 @@ namespace OdinsMissingPatch
 
         // ---- The hotkey ----------------------------------------------------------------------
 
-        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPatch(typeof(Player), nameof(Player.Update))]
         private static class Hotkey
         {
             private static void Postfix(Player __instance)
@@ -236,7 +236,7 @@ namespace OdinsMissingPatch
         /// veto. Each half answers to the tweaks that read it, so the chest's marks can still be
         /// set with quick stacking switched off and Chest buttons on.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGrid), "OnLeftDown")]
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.OnLeftDown))]
         private static class ToggleFavorite
         {
             private static bool Prefix(InventoryGrid __instance, UIInputHandler clickHandler)
@@ -296,7 +296,7 @@ namespace OdinsMissingPatch
         /// one place the mark has to come off. While there is no local player their own inventory
         /// is the one being loaded, so nothing is touched then.
         /// </summary>
-        [HarmonyPatch(typeof(Inventory), "Changed")]
+        [HarmonyPatch(typeof(Inventory), nameof(Inventory.Changed))]
         private static class ClearOutsideBackpack
         {
             private static void Prefix(Inventory __instance)
@@ -321,7 +321,7 @@ namespace OdinsMissingPatch
         /// its own ZDO. The drop has already saved it by the time this runs, so clearing the
         /// mark needs a second save.
         /// </summary>
-        [HarmonyPatch(typeof(ItemDrop), "DropItem")]
+        [HarmonyPatch(typeof(ItemDrop), nameof(ItemDrop.DropItem))]
         private static class ClearOnDrop
         {
             private static void Postfix(ItemDrop __result)
@@ -346,7 +346,7 @@ namespace OdinsMissingPatch
         /// Only the backpack's own flag gets the border. A chest's marks show as a yellow amount
         /// instead (ChestFavorites.ShowMarks), so the two favourites never look alike.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGrid), "UpdateGui")]
+        [HarmonyPatch(typeof(InventoryGrid), nameof(InventoryGrid.UpdateGui))]
         private static class ShowFavorites
         {
             /// <summary>How thick each bar is, in the canvas' units — a slot is about seventy.</summary>

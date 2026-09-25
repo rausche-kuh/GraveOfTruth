@@ -11,7 +11,8 @@ write the character.
 | Path                       | What                                                                                                                                                                                                 |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/OdinsMissingPatch.cs` | BepInEx entry point: binds every tweak's config, then patches all.                                                                                                                                   |
-| `src/Tweak.cs`             | The base class: the section, the `Enabled` switch, `BindMultiplier`, `OnSettingChanged`.                                                                                                             |
+| `src/Tweak.cs`             | The base class: the section, the `Enabled` switch, `On` (wanted and patched), `BindMultiplier`, `OnSettingChanged`.                                                                                  |
+| `src/Patcher.cs`           | Applies the patches of the tweaks that are on, class by class; a failed class switches off the tweaks it serves. The `Serves`, `Always` and `LoadHook` attributes.                                  |
 | `src/Tweaks/<Name>.cs`     | One quality of life change, with its `[HarmonyPatch]` classes nested inside it.                                                                                                                      |
 | `src/NearbyChests.cs`      | Shared by the chest tweaks: the registry of loaded containers, the in-reach rule, `Claim`, the "reach" that widens the backpack, the per-chest opt-out flag, and the chest panel's two text buttons. |
 | `src/ChestFavorites.cs`    | The kinds of item a chest is marked to take, on its ZDO: read by QuickStack and ChestButtons, set by an Alt-click in the chest's grid, a yellow amount on a marked slot, listed in the Clear favourites tooltip.  |
@@ -35,9 +36,11 @@ write the character.
   only registration; nothing scans the assembly for tweaks.
 - Patches are nested in their tweak, not in the plugin class — the root convention, one level down,
   so a tweak is one file holding both its settings and the code they drive.
-- **Every patch is applied at startup regardless of the config**, and asks `Instance.On` (and reads
-  its multipliers) each time it runs. That is what makes the switches work without a restart; never
-  make patching itself conditional.
+- **Only a tweak that is on gets its patches**, applied class by class by `src/Patcher.cs`, and every
+  patch still asks `Instance.On` (and reads its multipliers) each time it runs: switched off mid
+  game a tweak stays patched but inert, switched on mid game it is patched then. A patch class
+  outside a tweak needs `[Serves(...)]` (or `[Always]`), and one whose target runs once as an
+  object loads needs `[LoadHook]` - see "Patching" in [`docs/conventions.md`](docs/conventions.md).
 - Null-guard everything: `Player.m_localPlayer` is frequently null.
 - Nothing the player reads is a literal in the code: a call site passes a `$omp_` token and
   `assets/translations.csv` holds the words. Config descriptions are the exception and stay

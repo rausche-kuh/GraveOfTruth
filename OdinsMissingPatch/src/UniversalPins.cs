@@ -272,7 +272,8 @@ namespace OdinsMissingPatch
         /// right after, while the large map is open. A few hundred pins, compared by a long and a
         /// short string, once a frame and only with the map open.
         /// </summary>
-        [HarmonyPatch(typeof(Minimap), "Update")]
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.Update))]
+        [Serves(typeof(AutoPins), typeof(SharedMapTable))]
         private static class UndoClaims
         {
             private static void Postfix(Minimap __instance)
@@ -292,6 +293,7 @@ namespace OdinsMissingPatch
         /// a place this player has dismissed is taken off again.
         /// </summary>
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.AddSharedMapData))]
+        [Serves(typeof(AutoPins), typeof(SharedMapTable))]
         private static class KeepOnTableRead
         {
             private static readonly List<PinData> held = new List<PinData>();
@@ -369,6 +371,7 @@ namespace OdinsMissingPatch
         /// player took it off the map".
         /// </summary>
         [HarmonyPatch(typeof(Minimap), nameof(Minimap.RemovePin), typeof(Vector3), typeof(float))]
+        [Serves(typeof(AutoPins), typeof(SharedMapTable))]
         private static class RecordRemoval
         {
             private static void Prefix(Minimap __instance, Vector3 pos, float radius)

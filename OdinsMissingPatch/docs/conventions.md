@@ -3,6 +3,31 @@
 How a tweak is written, beyond the four rules in the mod's `CLAUDE.md` that always apply. The
 subsystem docs add their own rules on top: see `chests.md`, `inventory-ui.md`, `item-order.md`.
 
+## Patching
+
+- `Patcher` applies only the patch classes of tweaks that are on at launch, each in its own
+  try/catch. A class that fails (a game update renamed its target) switches off every tweak it
+  serves for the session, takes out what was patched for them alone, and logs one line per tweak.
+  A tweak switched off mid game keeps its patches, inert behind `On`, until the next launch.
+- A class nested in a tweak belongs to it. A shared one (`NearbyChests`, `UniversalPins`, ...)
+  carries `[Serves(typeof(A), typeof(B))]` naming every tweak that needs it: it is applied when
+  any of them is on and its failure switches all of them off. `Optional = true` for a nicety whose
+  failure should only be logged (a hover line, a tint). `[Always]` is for the mod's words and dev
+  commands. A class with neither is applied always and warned about in the log - add the
+  `Serves` when a tweak starts to use a shared patch.
+- `[LoadHook]` marks a class whose target runs once per object as it loads (`Container.Awake`,
+  `MapTable.Start`, `Game.Start`): patched mid game it would miss everything already loaded. A
+  tweak switched on mid game waits for the next launch while one of its load hooks is not in;
+  otherwise it is patched on the spot. A load patch whose tweak has a rescale that catches up on
+  what is loaded (`StationRange`, `MistClearRange`) needs no `LoadHook`.
+- Every `OnSettingChanged` handler also runs when the tweak's patches go in or come out, since `On`
+  changes then without a setting changing. So it has to bring what is loaded up to date from any
+  state - the ratio rescale does, starting from the scale it last applied.
+- Name a patch target with `nameof`, never a string: the publicizer makes private members
+  reachable, and a rename then breaks the build after `setup` instead of a tweak at runtime.
+
+## Writing a tweak
+
 - A multiplier is `1` when its tweak is off, so callers multiply either way instead of branching.
   `BindMultiplier` clamps to 0.1–20: the value goes straight into a game field.
 - A tweak that only reads its setting where it is used (`ComfortRange`) needs nothing else. One

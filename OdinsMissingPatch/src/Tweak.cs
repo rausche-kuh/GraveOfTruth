@@ -1,12 +1,14 @@
 using BepInEx.Configuration;
 using System;
+using System.Collections.Generic;
 
 namespace OdinsMissingPatch
 {
     /// <summary>
     /// One quality of life change: the config section it owns, plus the Harmony patches that carry
-    /// it out, nested inside it. The patches are always applied and ask <see cref="On"/> before
-    /// they do anything, so a tweak can be switched on and off while the game is running.
+    /// it out, nested inside it. Only a tweak that is on gets its patches (see <see cref="Patcher"/>);
+    /// they ask <see cref="On"/> before they do anything, so switching it off mid game leaves them
+    /// inert until the next launch.
     /// </summary>
     internal abstract class Tweak
     {
@@ -14,7 +16,12 @@ namespace OdinsMissingPatch
         private const float MinMultiplier = 0.1f;
         private const float MaxMultiplier = 20f;
 
+        private const string RestartNote =
+            " If it was off when the game started, switching it on may only take effect after a restart.";
+
         private ConfigEntry<bool> enabled;
+
+        private readonly List<Action> settingHandlers = new List<Action>();
 
         /// <summary>The config section this tweak owns, e.g. "Station Range".</summary>
         internal abstract string Section { get; }
@@ -25,13 +32,39 @@ namespace OdinsMissingPatch
         /// <summary>Binds the tweak's own settings. Enabled is already bound when this runs.</summary>
         protected abstract void Bind(ConfigFile config);
 
-        /// <summary>False until <see cref="Setup"/> has run, so an early patch is simply inert.</summary>
-        internal bool On => enabled != null && enabled.Value;
+        /// <summary>
+        /// Switched on and patched. False until <see cref="Setup"/> has run and the patches are in,
+        /// so an early patch is simply inert, and false for good once a patch of it has failed.
+        /// </summary>
+        internal bool On => Patched && Wanted;
 
-        internal void Setup(ConfigFile config)
+        /// <summary>What the config asks for, patched or not.</summary>
+        internal bool Wanted => enabled != null && enabled.Value;
+
+        internal ConfigEntry<bool> Enabled => enabled;
+
+        /// <summary>Whether its patches are in; set by <see cref="Patcher"/>.</summary>
+        internal bool Patched { get; set; }
+
+        /// <summary>A patch it needs could not be applied, so it stays off for the session.</summary>
+        internal bool Broken { get; set; }
+
+        internal void Setup(ConfigFile config, bool mayNeedRestart)
         {
-            enabled = config.Bind(Section, "Enabled", true, Summary);
+            enabled = config.Bind(Section, "Enabled", true, Summary + (mayNeedRestart ? RestartNote : ""));
             Bind(config);
+        }
+
+        /// <summary>
+        /// Runs every <see cref="OnSettingChanged"/> handler, for when <see cref="On"/> changed
+        /// without a setting changing: the patches going in, or a broken tweak going out.
+        /// </summary>
+        internal void Refresh()
+        {
+            foreach (Action handler in settingHandlers)
+            {
+                handler();
+            }
         }
 
         /// <summary>A multiplier on a vanilla value, clamped to something the game survives.</summary>
@@ -44,10 +77,12 @@ namespace OdinsMissingPatch
         /// <summary>
         /// Runs the handler whenever an entry in this tweak's section changes - Enabled included.
         /// Only tweaks that write game state on load need it; one that reads its setting where it
-        /// is used follows the config file by itself.
+        /// is used follows the config file by itself. It also runs when the tweak's patches go in
+        /// or come out, so it must bring what is already loaded up to date from any state.
         /// </summary>
         protected void OnSettingChanged(ConfigFile config, Action handler)
         {
+            settingHandlers.Add(handler);
             config.SettingChanged += (sender, args) =>
             {
                 if (args.ChangedSetting.Definition.Section == Section)

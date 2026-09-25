@@ -84,7 +84,7 @@ namespace OdinsMissingPatch
         /// takes it off, and one on an item whose equip is still queued cancels it - neither is a
         /// weapon being drawn, so neither arms the shield.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "ToggleEquipped")]
+        [HarmonyPatch(typeof(Player), nameof(Player.ToggleEquipped))]
         private static class NoticeWeaponPress
         {
             private static void Prefix(Player __instance, ItemDrop.ItemData item)

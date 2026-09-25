@@ -292,7 +292,8 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>MapTable keeps no list of itself, so every one that starts is put on ours.</summary>
-        [HarmonyPatch(typeof(MapTable), "Start")]
+        [HarmonyPatch(typeof(MapTable), nameof(MapTable.Start))]
+        [LoadHook]
         private static class Register
         {
             private static void Postfix(MapTable __instance)
@@ -304,7 +305,7 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(Player), "Update")]
+        [HarmonyPatch(typeof(Player), nameof(Player.Update))]
         private static class Tick
         {
             private static void Postfix(Player __instance)

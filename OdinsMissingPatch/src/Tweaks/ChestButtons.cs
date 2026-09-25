@@ -261,7 +261,7 @@ namespace OdinsMissingPatch
         /// the column beside the chest panel, from its top down. The game's two buttons are hidden while
         /// ours are up and shown again when they are not.
         /// </summary>
-        [HarmonyPatch(typeof(InventoryGui), "UpdateContainer")]
+        [HarmonyPatch(typeof(InventoryGui), nameof(InventoryGui.UpdateContainer))]
         private static class Panel
         {
             private static readonly List<Button> all = new List<Button>();

@@ -54,7 +54,7 @@ namespace OdinsMissingPatch
         /// station and never touches the prefab. Everything the game derives from it follows: the
         /// build check, the area marker circle and the station's effect area collider.
         /// </summary>
-        [HarmonyPatch(typeof(CraftingStation), "Start")]
+        [HarmonyPatch(typeof(CraftingStation), nameof(CraftingStation.Start))]
         private static class ScaleStation
         {
             private static void Postfix(CraftingStation __instance)
@@ -69,7 +69,7 @@ namespace OdinsMissingPatch
         /// again; leaving it vanilla keeps "scaled" and "rescalable" the same set. It is also not
         /// in the list the game searches, so its range is never read anyway.
         /// </summary>
-        [HarmonyPatch(typeof(StationExtension), "Awake")]
+        [HarmonyPatch(typeof(StationExtension), nameof(StationExtension.Awake))]
         private static class ScaleExtension
         {
             private static void Postfix(StationExtension __instance)

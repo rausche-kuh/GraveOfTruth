@@ -99,7 +99,7 @@ namespace OdinsMissingPatch
         /// the loading screen's alpha instead of a clock means the jump never happens on a visible
         /// screen, whatever the fade takes. Owner only, so this is the local player.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "UpdateTeleport")]
+        [HarmonyPatch(typeof(Player), nameof(Player.UpdateTeleport))]
         private static class SkipTheWait
         {
             private static bool waitedForFloor;
@@ -154,7 +154,7 @@ namespace OdinsMissingPatch
         /// remembers that the screen went up for a teleport until it is down again or something
         /// else (death, sleep) has claimed it.
         /// </summary>
-        [HarmonyPatch(typeof(Hud), "GetFadeDuration")]
+        [HarmonyPatch(typeof(Hud), nameof(Hud.GetFadeDuration))]
         private static class FadeFaster
         {
             private static bool fadingForTeleport;

@@ -131,7 +131,9 @@ namespace OdinsMissingPatch
         }
 
         /// <summary>ZNet builds a fresh ZRoutedRpc per session, so re-register once per game.</summary>
-        [HarmonyPatch(typeof(Game), "Start")]
+        [HarmonyPatch(typeof(Game), nameof(Game.Start))]
+        [Serves(typeof(AutoPins), Optional = true)]
+        [LoadHook]
         private static class Register
         {
             private static void Postfix()

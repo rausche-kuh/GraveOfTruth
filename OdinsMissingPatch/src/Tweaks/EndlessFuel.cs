@@ -43,7 +43,7 @@ namespace OdinsMissingPatch
         /// overwritten. Fires the game already marks infinite are left alone, as are ones that
         /// do not burn fuel at all - there is nothing to top up in either.
         /// </summary>
-        [HarmonyPatch(typeof(Fireplace), "UpdateFireplace")]
+        [HarmonyPatch(typeof(Fireplace), nameof(Fireplace.UpdateFireplace))]
         private static class KeepFuelled
         {
             private static void Postfix(Fireplace __instance)

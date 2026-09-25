@@ -36,7 +36,7 @@ namespace OdinsMissingPatch
         // the frames the player really is sprinting. The other callers (an attack starting, a
         // jump, a dodge) are left alone, so their interruptions stay vanilla.
 
-        [HarmonyPatch(typeof(Player), "CheckRun")]
+        [HarmonyPatch(typeof(Player), nameof(Player.CheckRun))]
         private static class NoticeSprint
         {
             private static void Prefix()
@@ -55,7 +55,7 @@ namespace OdinsMissingPatch
         /// is re-queued every frame it is unloaded, so keeping it would let the bolt load while
         /// sprinting, which is a bigger change than this tweak makes.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "ClearActionQueue")]
+        [HarmonyPatch(typeof(Player), nameof(Player.ClearActionQueue))]
         private static class KeepEquipsWhileSprinting
         {
             private static bool Prefix(Player __instance)

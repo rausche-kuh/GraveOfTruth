@@ -107,6 +107,7 @@ namespace OdinsMissingPatch
         }
 
         [HarmonyPatch(typeof(Terminal), nameof(Terminal.InitTerminal))]
+        [LoadHook]
         private static class Commands
         {
             private static void Postfix()

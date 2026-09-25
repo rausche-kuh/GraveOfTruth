@@ -181,7 +181,7 @@ namespace OdinsMissingPatch
         /// it arrives whoever owns the monster, which the monster's target itself does not (it is
         /// never written to the ZDO). This is the enraged signal: alerted, and coming for you.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "RPC_OnTargeted")]
+        [HarmonyPatch(typeof(Player), nameof(Player.RPC_OnTargeted))]
         private static class NoticeEnragedEnemy
         {
             private static void Postfix(Player __instance, bool alerted)
@@ -199,7 +199,7 @@ namespace OdinsMissingPatch
         // the drown timer - and the spend it makes is dropped at UseStamina. UseStamina is also
         // what restarts the regeneration delay, so a waived cost does not pause the refill either.
 
-        [HarmonyPatch(typeof(Player), "CheckRun")]
+        [HarmonyPatch(typeof(Player), nameof(Player.CheckRun))]
         private static class FreeSprinting
         {
             private static void Prefix(Player __instance)
@@ -213,7 +213,7 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(Player), "OnJump")]
+        [HarmonyPatch(typeof(Player), nameof(Player.OnJump))]
         private static class FreeJumping
         {
             private static void Prefix(Player __instance)
@@ -227,7 +227,7 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(Player), "OnSwimming")]
+        [HarmonyPatch(typeof(Player), nameof(Player.OnSwimming))]
         private static class FreeSwimming
         {
             private static void Prefix(Player __instance)
@@ -241,7 +241,7 @@ namespace OdinsMissingPatch
             }
         }
 
-        [HarmonyPatch(typeof(Player), "OnSneaking")]
+        [HarmonyPatch(typeof(Player), nameof(Player.OnSneaking))]
         private static class FreeSneaking
         {
             private static void Prefix(Player __instance)
@@ -268,7 +268,7 @@ namespace OdinsMissingPatch
         /// Placing, repairing and removing a piece all fetch their cost here and both gate on it
         /// and spend it, so a zero return covers all three.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "GetBuildStamina")]
+        [HarmonyPatch(typeof(Player), nameof(Player.GetBuildStamina))]
         private static class FreeBuilding
         {
             private static void Postfix(Player __instance, ref float __result)
@@ -286,7 +286,7 @@ namespace OdinsMissingPatch
         /// zero covers the lot. A negative return is a refund (some weapons give stamina back per
         /// missing health) and is left alone.
         /// </summary>
-        [HarmonyPatch(typeof(Attack), "GetAttackStamina")]
+        [HarmonyPatch(typeof(Attack), nameof(Attack.GetAttackStamina))]
         private static class FreeAttacking
         {
             private static void Postfix(Attack __instance, ref float __result)
@@ -309,7 +309,7 @@ namespace OdinsMissingPatch
         /// runs, so another player's view of the bar is a frame behind; the local HUD reads the
         /// field.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "UpdateStats", typeof(float))]
+        [HarmonyPatch(typeof(Player), nameof(Player.UpdateStats), typeof(float))]
         private static class RefillWhileFree
         {
             private static void Postfix(Player __instance, float dt)

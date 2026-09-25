@@ -40,7 +40,8 @@ namespace OdinsMissingPatch
         /// every translation first. Nothing here can stop the game loading its own words: a
         /// missing or unreadable file only leaves the mod's tokens showing as [omp_...].
         /// </summary>
-        [HarmonyPatch(typeof(Localization), "SetupLanguage")]
+        [HarmonyPatch(typeof(Localization), nameof(Localization.SetupLanguage))]
+        [Always]
         private static class Load
         {
             private static void Postfix(Localization __instance, string language)

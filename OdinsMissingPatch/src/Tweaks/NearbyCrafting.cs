@@ -61,7 +61,7 @@ namespace OdinsMissingPatch
         /// picks the ingredient by looking it up in the backpack afterwards, and a chest-only
         /// count would make the panel promise a craft that the lookup then fails.
         /// </summary>
-        [HarmonyPatch(typeof(Player), "HaveRequirementItems")]
+        [HarmonyPatch(typeof(Player), nameof(Player.HaveRequirementItems))]
         private static class RecipeScope
         {
             private static void Prefix(Player __instance, Recipe piece, out bool __state)

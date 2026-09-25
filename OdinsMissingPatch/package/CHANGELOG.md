@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- A tweak switched off when the game starts no longer touches the game at all, so switching off
+  one that clashes with another mod (and restarting) lets both run. A few tweaks switched on
+  mid game now wait for the next start; their `Enabled` setting says so.
+- Tried to mitigate broken tweaks by catching and disabling only whats broken on a game update
+- Pin looks: Burial Chambers, Troll Caves and Winding Tunnels get icons of their own instead of
+  the plain door, fuling villages and tar pits get icons too, and every map icon is now drawn at
+  the same size.
+
 ## 0.3.2
 
 - Combat stamina: boss fights always cost stamina. While a boss health bar is on screen every cost
