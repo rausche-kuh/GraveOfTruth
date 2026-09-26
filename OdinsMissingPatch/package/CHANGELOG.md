@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added: collateral damage. A troll's swing and ground slam hit the greydwarfs in the way,
+  Eikthyr's lightning hits the dwarfs in the arena, Yagluth's meteors hit fulings and lox, and
+  so on for every boss. Nothing hit this way fights back or picks a new target, bosses never hit
+  what they spawned, and a creature killed this way drops nothing unless you did at least half of
+  the work. Every player needs the mod for it to apply everywhere.
 - A tweak switched off when the game starts no longer touches the game at all, so switching off
   one that clashes with another mod (and restarting) lets both run. A few tweaks switched on
   mid game now wait for the next start; their `Enabled` setting says so.

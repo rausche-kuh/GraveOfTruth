@@ -24,6 +24,8 @@ because I want them, not because I can argue they are neutral:
 - **Pocket upgrades** hands you Haldor's first extra inventory row two bosses early. It is a
   progression change, not a QoL one: the cramped backpack of the Swamp and the Mountains is meant
   to be part of the game, and I would rather spend those hours on the game's other ideas.
+- **Collateral damage** makes trolls and bosses hit the creatures in their way. It is mostly for
+  the look of it, but a greydwarf crowd around a troll now thins out.
 
 ## What it does
 
@@ -98,6 +100,14 @@ because I want them, not because I can argue they are neutral:
 - **Player marks** — a small glowing mark over every other player who is
   behind a hill or a wall, or more than 50m away, and on the screen's edge in their direction when
   they are off screen.
+- **Collateral damage** — a troll's swing and ground slam hit the greydwarfs in the way, Eikthyr's
+  lightning hits the dwarfs in the arena, Yagluth's meteors hit fulings and lox, and every other
+  boss hits whatever stands in its attacks. Nothing hit this way fights back or picks a new
+  target, and your own fight is untouched: nothing can stand between you and a swing. Bosses
+  never hit what they spawn (the Elder's roots, Bonemass's blobs, the Queen's brood, Fader's
+  adds). A creature killed this way drops nothing, unless you dealt the killing blow or trolls and
+  bosses took no more than half its health (`LootLimit`). `Damage` scales the hits, `Creatures`
+  lists which creatures besides bosses do it (`Troll`).
 
 ## Configuration
 
@@ -125,7 +135,8 @@ anywhere in the sentence. Send one over and it ships with the next version.
 
 ## Multiplayer
 
-Client side; no server install, and nothing required of anyone else.
+Client side; no server install, and nothing required of anyone else, except for **collateral
+damage** (below).
 
 Most of it never leaves your machine. Four things touch the world, and each does it the way you
 would by hand: **area repair** sends the game's own repair, one piece at a time. The **chest
@@ -147,6 +158,12 @@ Two caveats. Client-side range tweaks reach only you: a player without the mod h
 at the same bench and sees mist close in at the vanilla distance. And **keep gear on death** goes
 further than the Casual death penalty a host chose, for you — on a world set any harsher it
 switches itself off, so it can never undo the penalty a host asked for.
+
+**Collateral damage** needs the mod on every machine to apply everywhere: a hit lands only when
+the player whose game runs the troll or boss has the mod, and it is handled as a collateral hit
+(no fighting back, the loot rule) only when the player whose game runs the creature it hits has
+it too. Valheim hands a creature to whoever is nearest, so in a group where everyone has the mod
+it simply works.
 
 ## Install
 

@@ -36,6 +36,7 @@ player's own save).
 | PinLooks | client | [map-pins](map-pins.md) |
 | DeathPins | client | [map-pins](map-pins.md) |
 | PlayerMarks | client | this entry |
+| CollateralDamage | world state (victim ZDOs); both the attacker's and the victim's owner need the mod | [creature-hits](creature-hits.md) |
 
 ## Shipped (0.1.0)
 
@@ -194,6 +195,19 @@ player's own save).
   kept their names when they moved to the palette. In a Debug build `src/Dev/MarkWards.cs`
   fills the partial `AddDevTargets` with every loaded ward, so the marks can be tried alone
   (`omp_marks_wards` switches it); in Release the partial has no body and the call is gone.
+- **Collateral damage** — trolls (`Creatures`, prefab names) and every boss (`Bosses`) hit the
+  creatures they do not count as enemies: a postfix on `Attack.DoMeleeAttack` repeats the sweep
+  (characters never end a ray, anything solid does), one on `DoAreaAttack` repeats the overlap,
+  `Projectile.IsValidTarget` says yes to a peer only inside `DoAOE` (meteors explode on peers but
+  never stop on them), `Aoe.ShouldHit` likewise (the troll's ground slam). The vanilla hit is
+  never touched, so peers cannot shield. Never a player, tamed creature, boss, `Boss` faction
+  (the Elder's roots) or boss spawn: `SpawnAbility.SetupAoe` from a boss and anything that wakes
+  during `TriggerSpawner.Spawn` (the Queen's arena) get the ZDO bool `omp_bossSpawn`. The
+  victim's owner recognises the hit by the same check in `RPC_Damage`, scales it by `Damage` (1)
+  and adds what it took after resistances to the ZDO float `omp_collateralDamage`; the
+  `MonsterAI.OnDamaged` reaction (wake, alert, target) is skipped. `CharacterDrop.OnDeath` drops
+  nothing when that float is above `LootLimit` (0.5) of max health and no player dealt the
+  killing blow.
 
 Each chest tweak is kept out of a chest by that chest's "Nearby use" button in the chest panel,
 which only a chest a player placed has: found chests and graves are never used from afar.

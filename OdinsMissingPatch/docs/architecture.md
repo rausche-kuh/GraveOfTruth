@@ -20,6 +20,7 @@ hold the conventions and game facts behind each piece.
 | `src/PinBroadcast.cs` | The routed RPCs that hand an auto pin to every player online the moment it is made, and that give a joining player everyone's pins once. Sends for AutoPins, receives into it. |
 | `src/Translations.cs` | Hands `assets/translations.csv` to the game's localization on every language setup. |
 | `src/Dev/MapCommands.cs` | Debug only: `omp_locations [filter]`, `omp_pins`, `omp_pins_forget`, `omp_pins_clear` — see [`map-pins.md`](map-pins.md). |
+| `src/Dev/CollateralTest.cs` | Debug only: `omp_cd <scene>` spawns a troll or boss with peers, `omp_cd_info`, `omp_cd_clear`; every collateral hit and loot decision shown top left. |
 | `src/Dev/MarkWards.cs` | Debug only: wards stand in for other players so `PlayerMarks` can be tried alone; `omp_marks_wards` switches it. |
 | `assets/icons/` | The button icons, 64px white-on-transparent PNGs, and the coloured `map_*` pin icons PinLooks draws, shipped beside the DLL. Gale flattens the folder on install, so `PanelButtons.Icon` looks in `icons/` and then beside the DLL. |
 | `assets/translations.csv` | Every word the mod shows, one row per `$omp_` token, one column per language |

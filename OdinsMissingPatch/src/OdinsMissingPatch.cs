@@ -44,6 +44,7 @@ namespace OdinsMissingPatch
             PinLooks.Instance,
             DeathPins.Instance,
             PlayerMarks.Instance,
+            CollateralDamage.Instance,
         };
 
         void Awake()

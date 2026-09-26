@@ -3,7 +3,7 @@
 A collection of quality of life changes, each one its own configurable tweak. See the root
 `CLAUDE.md` for the shared build, the scripts and the environment.
 
-Twenty-six tweaks are in the source, registered in `Tweaks` in `src/OdinsMissingPatch.cs`;
+Twenty-seven tweaks are in the source, registered in `Tweaks` in `src/OdinsMissingPatch.cs`;
 `docs/tweaks.md` says what each one does, its scope (client, world state, character) and which
 doc covers it. `ROADMAP.md` is what comes next and the known bugs.
 
@@ -24,6 +24,7 @@ before changing the area, and put back what a change taught.
 | sorting or classifying items | [`docs/item-order.md`](docs/item-order.md) — `MaterialOrder`, the crafting tree |
 | stations, fires, demisters, repairing | [`docs/building-and-world.md`](docs/building-and-world.md) |
 | stamina costs and what counts as hostile | [`docs/stamina.md`](docs/stamina.md) |
+| who a creature's attack hits, boss spawns, loot | [`docs/creature-hits.md`](docs/creature-hits.md) |
 | Rested, comfort and healing | [`docs/comfort-and-healing.md`](docs/comfort-and-healing.md) |
 | portals and the death path | [`docs/death-and-portals.md`](docs/death-and-portals.md) |
 | the radial menu and guardian powers | [`docs/radial-menu.md`](docs/radial-menu.md) |
