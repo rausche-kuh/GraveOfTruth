@@ -195,14 +195,15 @@ player's own save).
   kept their names when they moved to the palette. In a Debug build `src/Dev/MarkWards.cs`
   fills the partial `AddDevTargets` with every loaded ward, so the marks can be tried alone
   (`omp_marks_wards` switches it); in Release the partial has no body and the call is gone.
-- **Collateral damage** — trolls (`Creatures`, prefab names) and every boss (`Bosses`) hit the
+- **Collateral damage** — trolls (`Creatures`, prefab names) and every boss but `SeekerQueen` (`Bosses`) hit the
   creatures they do not count as enemies: a postfix on `Attack.DoMeleeAttack` repeats the sweep
   (characters never end a ray, anything solid does), one on `DoAreaAttack` repeats the overlap,
   `Projectile.IsValidTarget` says yes to a peer only inside `DoAOE` (meteors explode on peers but
   never stop on them), `Aoe.ShouldHit` likewise (the troll's ground slam). The vanilla hit is
   never touched, so peers cannot shield. Never a player, tamed creature, boss, `Boss` faction
-  (the Elder's roots) or boss spawn: `SpawnAbility.SetupAoe` from a boss and anything that wakes
-  during `TriggerSpawner.Spawn` (the Queen's arena) get the ZDO bool `omp_bossSpawn`. The
+  (the Elder's roots) or boss spawn: `SpawnAbility.SetupAoe` from a boss gives the ZDO bool
+  `omp_bossSpawn`. The Queen is left out because her brood comes from arena spawners nothing ties
+  to her, and her closed arena holds nothing else. The
   victim's owner recognises the hit by the same check in `RPC_Damage`, scales it by `Damage` (1)
   and adds what it took after resistances to the ZDO float `omp_collateralDamage`; the
   `MonsterAI.OnDamaged` reaction (wake, alert, target) is skipped. `CharacterDrop.OnDeath` drops

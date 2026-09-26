@@ -21,6 +21,7 @@ namespace OdinsMissingPatch
             { "elder", new[] { "gd_king", "Greydwarf", "Greydwarf", "Greydwarf", "Greydwarf", "Greydwarf", "Greydwarf" } },
             { "bonemass", new[] { "Bonemass", "Skeleton", "Skeleton", "Skeleton", "Draugr", "Draugr" } },
             { "yagluth", new[] { "GoblinKing", "Lox", "Lox", "Lox", "Goblin", "Goblin", "Goblin" } },
+            { "queen", new[] { "SeekerQueen", "Seeker", "Seeker", "SeekerBrood", "SeekerBrood", "SeekerBrute" } },
             { "fader", new[] { "Fader", "Charred_Melee", "Charred_Melee", "Charred_Archer", "Charred_Archer" } },
         };
 

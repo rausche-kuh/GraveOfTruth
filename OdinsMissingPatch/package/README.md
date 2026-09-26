@@ -102,10 +102,10 @@ because I want them, not because I can argue they are neutral:
   they are off screen.
 - **Collateral damage** — a troll's swing and ground slam hit the greydwarfs in the way, Eikthyr's
   lightning hits the dwarfs in the arena, Yagluth's meteors hit fulings and lox, and every other
-  boss hits whatever stands in its attacks. Nothing hit this way fights back or picks a new
-  target, and your own fight is untouched: nothing can stand between you and a swing. Bosses
-  never hit what they spawn (the Elder's roots, Bonemass's blobs, the Queen's brood, Fader's
-  adds). A creature killed this way drops nothing, unless you dealt the killing blow or trolls and
+  boss but the Queen (her arena is closed, all around her is her brood) hits whatever stands in
+  its attacks. Nothing hit this way fights back or picks a new target, and your own fight is
+  untouched: nothing can stand between you and a swing. Bosses never hit what they spawn (the
+  Elder's roots, Bonemass's blobs, Fader's adds). A creature killed this way drops nothing, unless you dealt the killing blow or trolls and
   bosses took no more than half its health (`LootLimit`). `Damage` scales the hits, `Creatures`
   lists which creatures besides bosses do it (`Troll`).
 

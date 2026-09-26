@@ -15,7 +15,8 @@ namespace OdinsMissingPatch
     /// ("peers") are hit by a separate pass afterwards, so a peer never shields the player. No
     /// targeting is touched, so a troll or boss only ever hits a peer while swinging at a player,
     /// and a peer that is hit does not wake, alert or turn on its attacker. What a boss spawned
-    /// (the Elder's roots, Bonemass's blobs, the Queen's brood, Fader's charred) is never hit.
+    /// (the Elder's roots, Bonemass's blobs, Fader's charred) is never hit. The Queen hits nothing:
+    /// her arena is closed and all she has around her is her own brood.
     /// A creature that trolls and bosses took most of the health of drops nothing, unless a player
     /// finished it. The facts behind it are in docs/creature-hits.md.
     /// </summary>
@@ -29,6 +30,10 @@ namespace OdinsMissingPatch
         // collateral hits took, for the loot rule.
         private static readonly int BossSpawnKey = "omp_bossSpawn".GetStableHashCode();
         private static readonly int CollateralKey = "omp_collateralDamage".GetStableHashCode();
+
+        // The Queen fights in a closed arena among her brood, which her spawners bring and nothing
+        // marks as hers, so she is never an attacker.
+        private static readonly int QueenPrefab = "SeekerQueen".GetStableHashCode();
 
         // The game's melee sweep steps its rays every 4 degrees.
         private const float SweepStep = 4f;
@@ -55,7 +60,7 @@ namespace OdinsMissingPatch
                 "Comma separated prefab names of the creatures whose attacks hit the creatures in " +
                 "their way, e.g. Troll, Abomination, Gjall. Tamed ones never do.");
             bosses = config.Bind(Section, "Bosses", true,
-                "Every boss's attacks hit the creatures in their way too. What a boss spawns is never hit.");
+                "Every boss's attacks but the Queen's hit the creatures in their way too. What a boss spawns is never hit.");
             damage = BindMultiplier(config, "Damage", 1f,
                 "Multiplier on the damage a creature takes from a troll or boss that did not mean to hit it.");
             lootLimit = config.Bind(Section, "LootLimit", 0.5f, new ConfigDescription(
@@ -86,19 +91,20 @@ namespace OdinsMissingPatch
             return nview != null && nview.IsValid() ? nview.GetZDO() : null;
         }
 
-        /// <summary>A creature whose attacks hit its peers: a listed prefab or a boss, never tamed.</summary>
+        /// <summary>A creature whose attacks hit its peers: a listed prefab or a boss but the Queen, never tamed.</summary>
         private bool IsAttacker(Character character)
         {
             if (character == null || character.IsPlayer() || character.IsTamed())
             {
                 return false;
             }
-            if (bosses.Value && character.IsBoss())
-            {
-                return true;
-            }
             ZDO zdo = GetZDO(character);
-            return zdo != null && attackers.Contains(zdo.GetPrefab());
+            if (zdo == null)
+            {
+                return false;
+            }
+            int prefab = zdo.GetPrefab();
+            return attackers.Contains(prefab) || (bosses.Value && character.IsBoss() && prefab != QueenPrefab);
         }
 
         /// <summary>
@@ -555,43 +561,6 @@ namespace OdinsMissingPatch
                 if (Instance.On && owner != null && __instance.m_owner != null && __instance.m_owner.IsBoss())
                 {
                     MarkBossSpawn(owner);
-                }
-            }
-        }
-
-        // The Queen's brood and seekers come from the spawners in her arena, which only she
-        // triggers: every character that wakes up while one of them spawns is hers.
-        private static bool triggerSpawning;
-        private static readonly List<Character> triggerSpawned = new List<Character>();
-
-        [HarmonyPatch(typeof(TriggerSpawner), nameof(TriggerSpawner.Spawn))]
-        private static class SpawnedByQueen
-        {
-            private static void Prefix()
-            {
-                triggerSpawned.Clear();
-                triggerSpawning = Instance.On;
-            }
-
-            private static void Finalizer()
-            {
-                triggerSpawning = false;
-                foreach (Character character in triggerSpawned)
-                {
-                    MarkBossSpawn(character);
-                }
-                triggerSpawned.Clear();
-            }
-        }
-
-        [HarmonyPatch(typeof(Character), nameof(Character.Awake))]
-        private static class SpawnerCharacter
-        {
-            private static void Postfix(Character __instance)
-            {
-                if (triggerSpawning)
-                {
-                    triggerSpawned.Add(__instance);
                 }
             }
         }

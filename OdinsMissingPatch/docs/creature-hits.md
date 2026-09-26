@@ -66,7 +66,9 @@ character-only layer mask.
 - The Queen's `SeekerQueen_Call` fires `SeekerQueen_triggerspawn_ability` (`TriggerSpawnAbility`),
   which calls `TriggerSpawner.TriggerAllInRange`: an RPC to each spawner in her arena
   (`TriggerSpawner_Brood`, `TriggerSpawner_Seeker`), which spawns in `Spawn()` on the spawner's
-  owner — possibly another client. Nothing else in the game triggers a `TriggerSpawner`.
+  owner — possibly another client. Nothing else in the game triggers a `TriggerSpawner`. Rather
+  than tag those spawns, the tweak leaves the Queen (`SeekerQueen`) out: her arena is closed and
+  holds nothing but her brood.
 
 ## What a hit does to the victim
 
