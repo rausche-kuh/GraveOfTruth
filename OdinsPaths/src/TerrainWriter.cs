@@ -19,37 +19,27 @@ namespace OdinsPaths
         private const string CompilerPrefab = "_TerrainCompiler";
         /// <summary>The blob format <c>TerrainComp.Save</c> writes.</summary>
         private const int FormatVersion = 1;
-        /// <summary>Where the dirt fades out at the path's edge, in metres.</summary>
-        private const float EdgeSoftness = 0.8f;
         /// <summary>How much the painted width wobbles, as a share of it.</summary>
-        private const float EdgeWobble = 0.15f;
+        internal const float EdgeWobble = 0.15f;
         /// <summary>Beyond the path's edge, the levelling blends back into the ground over this.</summary>
-        private const float Shoulder = 1.5f;
+        internal const float Shoulder = 1.5f;
+        /// <summary>Segments further apart along the trail than this (20 m) are different legs of it.</summary>
+        private const int OtherLeg = Trail.OtherLeg;
+        /// <summary>At most this many zones a frame, and a second one only while the frame's budget lasts.</summary>
         private const int ZonesPerFrame = 2;
-
-        /// <summary>Over about this many metres the width drifts from narrow to wide and back.</summary>
-        private const float WidthDrift = 40f;
-
-        /// <summary>How far from the trail's line the writer may change anything: edge and shoulder.</summary>
-        internal static float Reach => MaxHalfWidth * (1f + EdgeWobble) + Shoulder;
-
-        /// <summary>Half the widest a path gets.</summary>
-        internal static float MaxHalfWidth => (OdinsPathsPlugin.PathWidth.Value + OdinsPathsPlugin.WidthVariation.Value) * 0.5f;
-
         /// <summary>
-        /// Half the path's width at a point: the configured width, drifting by up to the variation
-        /// either way. Slow noise over the world, offset by its seed - a trail's two edges get the
-        /// same width, and where two paths meet they agree on it.
+        /// Around the sacrificial stones no levelling within this, fading in over <see cref="Shoulder"/>
+        /// past it: the start temple levels its own ground, and a road's levelling on top of it was
+        /// bumpy (seen in game 2026-09-25). The paint still runs up to the stones.
         /// </summary>
-        internal static float HalfWidthAt(Vector2 at)
-        {
-            int seed = WorldGenerator.instance != null ? WorldGenerator.instance.GetSeed() : 0;
-            float offset = (seed & 0x3ff) * 1.37f;
-            // Perlin noise rarely strays far from 0.5; stretched, the path reaches both extremes.
-            float noise = Mathf.Clamp((Mathf.PerlinNoise(at.x / WidthDrift + offset, at.y / WidthDrift - offset) - 0.5f) * 2.5f, -1f, 1f);
-            float width = OdinsPathsPlugin.PathWidth.Value + OdinsPathsPlugin.WidthVariation.Value * noise;
-            return Mathf.Max(0.5f, width) * 0.5f;
-        }
+        private const float TempleKeep = 10f;
+        /// <summary>
+        /// Where the ground is too steep for a main road's stone it is painted dirt instead, fading
+        /// out from this slope to <see cref="SteepestDirt"/> (42° to 53°): a road that cut and filled
+        /// all it could and still climbs steeply looked flattened with no road on it.
+        /// </summary>
+        private const float SteepDirtFade = 0.9f;
+        private const float SteepestDirt = 1.3f;
 
         /// <summary>What was in a zone before the trail, so a dev "undo" can put it back.</summary>
         internal sealed class ZoneBackup
@@ -73,12 +63,16 @@ namespace OdinsPaths
             Heightmap prefabMap = ZoneSystem.instance.m_zonePrefab.GetComponentInChildren<Heightmap>();
             int width = prefabMap.m_width;
             float scale = prefabMap.m_scale;
-            float reach = Reach + scale;
+            float reach = trail.Kind.Reach + scale;
 
             Dictionary<Vector2s, List<int>> zones = ZonesNear(trail, reach);
+            List<Vector2> temples = Planner.Temples();
 
             // Ask the builder thread for all of them at once, take each as it is ready, and
-            // merge a couple per frame - one zone is a few ms of distance checks.
+            // merge one or two per frame - one zone is a few ms of distance checks.
+            float budget = OdinsPathsPlugin.SearchBudgetMs.Value;
+            int total = zones.Count;
+            System.Diagnostics.Stopwatch frame = new System.Diagnostics.Stopwatch();
             HashSet<Vector2s> pending = new HashSet<Vector2s>(zones.Keys);
             Dictionary<Vector2s, HeightmapBuilder.HMBuildData> built = new Dictionary<Vector2s, HeightmapBuilder.HMBuildData>();
             List<Vector2s> done = new List<Vector2s>();
@@ -95,19 +89,21 @@ namespace OdinsPaths
                 }
                 pending.ExceptWith(built.Keys);
                 done.Clear();
+                frame.Restart();
                 foreach (KeyValuePair<Vector2s, HeightmapBuilder.HMBuildData> entry in built)
                 {
-                    if (done.Count == ZonesPerFrame)
+                    if (done.Count == ZonesPerFrame || (done.Count > 0 && frame.Elapsed.TotalMilliseconds > budget))
                     {
                         break;
                     }
-                    WriteZone(entry.Key, entry.Value, trail, zones[entry.Key], locations, structures, result);
+                    WriteZone(entry.Key, entry.Value, trail, zones[entry.Key], locations, structures, temples, result);
                     done.Add(entry.Key);
                 }
                 foreach (Vector2s zone in done)
                 {
                     built.Remove(zone);
                 }
+                Progress.Set(1f - (float)(pending.Count + built.Count) / Mathf.Max(total, 1));
                 yield return null;
             }
         }
@@ -146,7 +142,7 @@ namespace OdinsPaths
         }
 
         private static void WriteZone(Vector2s zone, HeightmapBuilder.HMBuildData data, Trail trail,
-            List<int> segments, List<Circle> locations, Structures structures, Result result)
+            List<int> segments, List<Circle> locations, Structures structures, List<Vector2> temples, Result result)
         {
             int width = data.m_width;
             int pitch = width + 1;
@@ -163,19 +159,69 @@ namespace OdinsPaths
             }
 
             float waterLevel = ZoneSystem.instance.m_waterLevel;
-            float maxHalfWidth = MaxHalfWidth;
-            bool level = OdinsPathsPlugin.Levelling.Value;
-            float maxCut = OdinsPathsPlugin.MaxCut.Value;
+            RoadKind kind = trail.Kind;
+            float maxHalfWidth = kind.MaxHalfWidth;
+            bool level = kind.Levelling;
             float origin = -width * scale * 0.5f;
             // Heights sit on the vertices. The paint mask's texels are half a metre off them, as
             // TerrainComp.PaintCleared's half offset has it.
             Vector2 firstVertex = new Vector2(center.x + origin, center.z + origin);
             Vector2 firstTexel = firstVertex + new Vector2(0.5f, 0.5f) * scale;
-            float[] texelDistance = Nearest(trail, segments, firstTexel, pitch, scale, maxHalfWidth * (1f + EdgeWobble), out float[] _);
-            float[] vertexDistance = Nearest(trail, segments, firstVertex, pitch, scale, maxHalfWidth + Shoulder, out float[] profile);
+            float flatFactor = kind.FlatFactor;
+            float[] texelDistance = Nearest(trail, segments, firstTexel, pitch, scale, maxHalfWidth * (1f + EdgeWobble), out float[] _, out bool[] texelRaised, out int[] texelSegment);
+            float[] vertexDistance = Nearest(trail, segments, firstVertex, pitch, scale, maxHalfWidth * flatFactor + Shoulder, out float[] profile, out bool[] raised, out int[] vertexSegment);
 
             int painted = 0;
             int levelled = 0;
+            // The levelling first, so that the paint sees the ground as it will be.
+            for (int y = 0; y < pitch; y++)
+            {
+                for (int x = 0; x < pitch; x++)
+                {
+                    int index = y * pitch + x;
+                    float baseHeight = data.m_baseHeights[index];
+                    float distance = vertexDistance[index];
+                    Vector2 vertex = firstVertex + new Vector2(x, y) * scale;
+                    if (!level || distance >= maxHalfWidth * flatFactor + Shoulder)
+                    {
+                        continue;
+                    }
+                    // Flat to the paint's widest on a main road, to half its width on a spur.
+                    float halfWidth = trail.HalfWidthAt(vertexSegment[index], vertex) * flatFactor;
+                    bool causeway = raised[index];
+                    if (distance >= halfWidth + Shoulder || terrain.ModifiedHeight[index]
+                        || (!causeway && baseHeight < waterLevel + Trail.ShoreMargin + 0.2f) || InAny(locations, vertex))
+                    {
+                        continue;
+                    }
+                    float building = structures.Distance(vertex, Structures.PieceReach + Shoulder);
+                    if (building < Structures.PieceReach)
+                    {
+                        continue;
+                    }
+                    float temple = TempleDistance(temples, vertex);
+                    if (temple < TempleKeep)
+                    {
+                        continue;
+                    }
+                    float blend = distance <= halfWidth ? 1f : Falloff(kind, (distance - halfWidth) / Shoulder);
+                    blend *= Mathf.SmoothStep(0f, 1f, (building - Structures.PieceReach) / Shoulder);
+                    blend *= Mathf.SmoothStep(0f, 1f, (temple - TempleKeep) / Shoulder);
+                    // A causeway fills up from as deep as the swamp is let go; elsewhere the cut is the
+                    // trail's there: the kind's, deeper at a hairpin's landing and in the Mistlands.
+                    float maxCut = trail.MaxCutAt(vertexSegment[index]);
+                    float maxRaise = causeway ? Trail.SwampFill + Trail.CausewayHeight : maxCut;
+                    float delta = Mathf.Clamp(profile[index] - baseHeight, -maxCut, maxRaise) * blend;
+                    if (Mathf.Abs(delta) < 0.02f)
+                    {
+                        continue;
+                    }
+                    terrain.ModifiedHeight[index] = true;
+                    terrain.LevelDelta[index] = delta;
+                    terrain.SmoothDelta[index] = 0f;
+                    levelled++;
+                }
+            }
             for (int y = 0; y < pitch; y++)
             {
                 for (int x = 0; x < pitch; x++)
@@ -185,44 +231,22 @@ namespace OdinsPaths
                     Vector2 texel = firstTexel + new Vector2(x, y) * scale;
                     float wobble = 1f + EdgeWobble * (Mathf.PerlinNoise(texel.x / 5f, texel.y / 5f) * 2f - 1f);
                     float paintDistance = texelDistance[index];
-                    float edge = paintDistance < float.MaxValue ? HalfWidthAt(texel) * wobble : 0f;
-                    // No dirt under a building, and levelling fades out over a shoulder beside one.
-                    if (paintDistance < edge && baseHeight >= waterLevel + Trail.ShoreMargin
+                    float edge = paintDistance < float.MaxValue ? trail.HalfWidthAt(texelSegment[index], texel) * wobble : 0f;
+                    // No paint under a building (the levelling fades out over a shoulder beside one),
+                    // none on a bank or cliff. A causeway's texels are painted though the ground is under the water now: it is raised.
+                    // Stone too steep for it gives way to dirt, which may go a little steeper.
+                    float slope = paintDistance < edge ? Slope(terrain, data.m_baseHeights, pitch, scale, x, y) : float.MaxValue;
+                    float stone = Fade(slope, kind.PaintSlopeFade, kind.MaxPaintSlope);
+                    float dirt = kind.Paved ? Fade(slope, SteepDirtFade, SteepestDirt) : 0f;
+                    float steep = Mathf.Max(stone, dirt);
+                    if (paintDistance < edge && steep > 0f && (baseHeight >= waterLevel + Trail.ShoreMargin || (level && texelRaised[index]))
                         && structures.Distance(texel, Structures.PieceReach) >= Structures.PieceReach
                         && Paint(terrain, data.m_baseMask[index], index, texel,
-                            Mathf.Clamp01((edge - paintDistance) / EdgeSoftness)))
+                            Color.Lerp(Heightmap.m_paintMaskDirt, trail.PaintAt(texelSegment[index]), dirt > stone ? stone / dirt : 1f),
+                            Mathf.Clamp01((edge - paintDistance) / kind.EdgeSoftness) * steep))
                     {
                         painted++;
                     }
-
-                    float distance = vertexDistance[index];
-                    Vector2 vertex = firstVertex + new Vector2(x, y) * scale;
-                    if (!level || distance >= maxHalfWidth + Shoulder)
-                    {
-                        continue;
-                    }
-                    float halfWidth = HalfWidthAt(vertex);
-                    if (distance >= halfWidth + Shoulder || terrain.ModifiedHeight[index]
-                        || baseHeight < waterLevel + Trail.ShoreMargin + 0.2f || InAny(locations, vertex))
-                    {
-                        continue;
-                    }
-                    float building = structures.Distance(vertex, Structures.PieceReach + Shoulder);
-                    if (building < Structures.PieceReach)
-                    {
-                        continue;
-                    }
-                    float blend = distance <= halfWidth ? 1f : 1f - Mathf.SmoothStep(0f, 1f, (distance - halfWidth) / Shoulder);
-                    blend *= Mathf.SmoothStep(0f, 1f, (building - Structures.PieceReach) / Shoulder);
-                    float delta = Mathf.Clamp(profile[index] - baseHeight, -maxCut, maxCut) * blend;
-                    if (Mathf.Abs(delta) < 0.02f)
-                    {
-                        continue;
-                    }
-                    terrain.ModifiedHeight[index] = true;
-                    terrain.LevelDelta[index] = delta;
-                    terrain.SmoothDelta[index] = 0f;
-                    levelled++;
                 }
             }
             if (painted == 0 && levelled == 0)
@@ -250,11 +274,64 @@ namespace OdinsPaths
         }
 
         /// <summary>
-        /// Dirt over the ground, fading at the edge; alpha (the vegetation mask) is kept. A texel
-        /// the player cultivated or paved is left alone - except that in the Deep North the green
-        /// channel is snow depth, which dirt clears.
+        /// How much of the levelling a vertex t of the way across the shoulder keeps: with a sharp
+        /// edge it drops off at once and eases into the ground (a bench with a bank beside it);
+        /// otherwise it rounds off at both ends.
         /// </summary>
-        private static bool Paint(TerrainData terrain, Color baseMask, int index, Vector2 at, float weight)
+        private static float Falloff(RoadKind kind, float t)
+        {
+            t = Mathf.Clamp01(t);
+            return kind.SharpEdge ? (1f - t) * (1f - t) : 1f - Mathf.SmoothStep(0f, 1f, t);
+        }
+
+        /// <summary>
+        /// 1 up to a slope of from, fading to 0 at to: the kind's <see cref="RoadKind.MaxPaintSlope"/>
+        /// for its own paint - stone on a bank or a cliff beside a cut looks drawn on (seen in game
+        /// 2026-09-25) -, <see cref="SteepestDirt"/> for the dirt that stands in for stone.
+        /// </summary>
+        private static float Fade(float slope, float from, float to)
+        {
+            return 1f - Mathf.SmoothStep(0f, 1f, (slope - from) / (to - from));
+        }
+
+        /// <summary>The slope, rise over run, of a texel's ground: the four vertices around it, levelled.</summary>
+        private static float Slope(TerrainData terrain, List<float> baseHeights, int pitch, float scale, int x, int y)
+        {
+            int x1 = Mathf.Min(x + 1, pitch - 1);
+            int y1 = Mathf.Min(y + 1, pitch - 1);
+            float a = Final(terrain, baseHeights, y * pitch + x);
+            float b = Final(terrain, baseHeights, y * pitch + x1);
+            float c = Final(terrain, baseHeights, y1 * pitch + x);
+            float d = Final(terrain, baseHeights, y1 * pitch + x1);
+            float dx = ((b - a) + (d - c)) * 0.5f;
+            float dy = ((c - a) + (d - b)) * 0.5f;
+            return Mathf.Sqrt(dx * dx + dy * dy) / scale;
+        }
+
+        /// <summary>How far p is from the nearest sacrificial stones' centre.</summary>
+        private static float TempleDistance(List<Vector2> temples, Vector2 p)
+        {
+            float nearest = float.MaxValue;
+            foreach (Vector2 temple in temples)
+            {
+                nearest = Mathf.Min(nearest, Vector2.Distance(temple, p));
+            }
+            return nearest;
+        }
+
+        private static float Final(TerrainData terrain, List<float> baseHeights, int index)
+        {
+            return terrain.ModifiedHeight[index] ? baseHeights[index] + terrain.LevelDelta[index] + terrain.SmoothDelta[index] : baseHeights[index];
+        }
+
+        /// <summary>
+        /// The road's paint (dirt or stone) over the ground, fading at the edge, lerped as
+        /// <c>TerrainComp.PaintCleared</c> does; alpha (the vegetation mask) is kept. A texel
+        /// cultivated or paved already - by a player, or by a main road laid before, which a spur
+        /// then stops at - is left alone, except that in the Deep North the green channel is snow
+        /// depth, which either paint clears.
+        /// </summary>
+        private static bool Paint(TerrainData terrain, Color baseMask, int index, Vector2 at, Color paint, float weight)
         {
             Color current = terrain.ModifiedPaint[index] ? terrain.Paint[index] : baseMask;
             bool deepNorth = WorldGenerator.IsDeepnorth(at.x, at.y);
@@ -262,32 +339,45 @@ namespace OdinsPaths
             {
                 return false;
             }
-            Color dirt = current;
-            dirt.r = Mathf.Lerp(current.r, 1f, weight);
-            dirt.g = Mathf.Lerp(current.g, 0f, weight);
-            dirt.b = Mathf.Lerp(current.b, 0f, weight);
-            if (terrain.ModifiedPaint[index] && dirt == current)
+            Color painted = current;
+            painted.r = Mathf.Lerp(current.r, paint.r, weight);
+            painted.g = Mathf.Lerp(current.g, paint.g, weight);
+            painted.b = Mathf.Lerp(current.b, paint.b, weight);
+            if (terrain.ModifiedPaint[index] && painted == current)
             {
                 return false;
             }
             terrain.ModifiedPaint[index] = true;
-            terrain.Paint[index] = dirt;
+            terrain.Paint[index] = painted;
             return true;
         }
 
         /// <summary>
         /// For a pitch x pitch grid starting at first: each point's distance to the nearest
         /// segment, and the path height there. Each segment only visits the points within reach
-        /// of it; the rest stay at float.MaxValue.
+        /// of it; the rest stay at float.MaxValue. Where another stretch of the trail - more than
+        /// <see cref="OtherLeg"/> points along it - is within reach too, the leg of a hairpin
+        /// above or below, the height between their flat parts is blended between the two by
+        /// how far past each one's flat it is: the nearest alone left a ridge or a step between
+        /// the legs (messy turns on steep Black Forest slopes, seen in game 2026-09-25), and
+        /// blending on the flat itself tilted the road toward the other leg.
         /// </summary>
         private static float[] Nearest(Trail trail, List<int> segments, Vector2 first, int pitch, float scale,
-            float reach, out float[] profile)
+            float reach, out float[] profile, out bool[] causeway, out int[] nearest)
         {
             float[] distance = new float[pitch * pitch];
             profile = new float[pitch * pitch];
+            causeway = new bool[pitch * pitch];
+            nearest = new int[pitch * pitch];
+            float[] otherDistance = new float[pitch * pitch];
+            float[] otherProfile = new float[pitch * pitch];
+            int[] other = new int[pitch * pitch];
             for (int i = 0; i < distance.Length; i++)
             {
                 distance[i] = float.MaxValue;
+                otherDistance[i] = float.MaxValue;
+                nearest[i] = int.MinValue;
+                other[i] = int.MinValue;
             }
             foreach (int segment in segments)
             {
@@ -303,11 +393,45 @@ namespace OdinsPaths
                     {
                         int index = y * pitch + x;
                         float d = trail.Nearest(first + new Vector2(x, y) * scale, segment, out float height);
+                        if (d > reach)
+                        {
+                            continue;
+                        }
                         if (d < distance[index])
                         {
+                            // The nearest so far becomes the other leg, if it is one.
+                            if (nearest[index] != int.MinValue && Mathf.Abs(nearest[index] - segment) > OtherLeg)
+                            {
+                                otherDistance[index] = distance[index];
+                                otherProfile[index] = profile[index];
+                                other[index] = nearest[index];
+                            }
                             distance[index] = d;
                             profile[index] = height;
+                            nearest[index] = segment;
+                            causeway[index] = trail.CausewayAt(segment);
                         }
+                        else if (d < otherDistance[index] && Mathf.Abs(nearest[index] - segment) > OtherLeg)
+                        {
+                            otherDistance[index] = d;
+                            otherProfile[index] = height;
+                            other[index] = segment;
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < distance.Length; i++)
+            {
+                // The other leg must still be another leg of the final nearest.
+                if (otherDistance[i] < float.MaxValue && Mathf.Abs(other[i] - nearest[i]) > OtherLeg && !causeway[i])
+                {
+                    Vector2 p = first + new Vector2(i % pitch, i / pitch) * scale;
+                    float flat = trail.Kind.FlatFactor;
+                    float past = distance[i] - trail.HalfWidthAt(nearest[i], p) * flat;
+                    float otherPast = Mathf.Max(0f, otherDistance[i] - trail.HalfWidthAt(other[i], p) * flat);
+                    if (past > 0f)
+                    {
+                        profile[i] = Mathf.Lerp(profile[i], otherProfile[i], past / (past + otherPast + 0.01f));
                     }
                 }
             }

@@ -1,16 +1,17 @@
 # OdinsPaths
 
-Reveal a boss altar at a vegvisir, sleep, and the morning finds a trail laid to it from the
-nearest point of the path network, following the easiest ground like a real footpath. Server
-side; the paths are the game's own terrain data. [`package/README.md`](package/README.md) is the
-Thunderstore page; [`ROADMAP.md`](ROADMAP.md) is the plan, with what is possible, what it costs
-and what still has to be checked in game.
+A road network that grows with the world's progress: stone roads to the boss altars and the
+traders, forking off each other, dirt spurs to the villages and crypts beside them, all
+following the easiest ground. Server side; the paths are the game's own terrain data. [`package/README.md`](package/README.md) is the
+Thunderstore page; [`ROADMAP.md`](ROADMAP.md) is the plan, and [`docs/`](docs/) the design behind it: what is
+possible, what it costs and what still has to be checked in game.
 
 | Path | What |
 | --- | --- |
 | `src/OdinsPaths.cs` | Entry point and settings. |
 | `src/PathSearch.cs`, `src/Trail.cs`, `src/TerrainWriter.cs`, `src/PathLayer.cs` | Find a route, shape it, write it into the terrain. |
-| `src/Dev/PathCommands.cs` | `paths facts`, `paths bench`, `paths lay`, `paths undo`, `paths clearpins` (Debug builds only). |
+| `src/RoadKind.cs`, `src/Network.cs`, `src/Planner.cs`, `src/Grower.cs` | Stone and dirt, the network and its storage, what comes next, and when it grows. |
+| `src/Dev/PathCommands.cs` | `paths lay`, `paths plan`, `paths grow`, `paths network`, `paths undo` and more (Debug builds only; the list is in `CLAUDE.md`). |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 
 ## Build
