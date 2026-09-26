@@ -2,9 +2,9 @@
 
 Bless a tree with the hammer and it never falls, so a tree house built on it is safe — and stays
 safe without the mod. The ground under it is guarded, the hammer cycles a tree through the kinds
-of its family, and dodging back and forth beside a sapling grows it in seconds.
+of its family, and tapping crouch three times beside a sapling grows it in seconds.
 [`package/README.md`](package/README.md) is the Thunderstore page; [`ROADMAP.md`](ROADMAP.md) is
-what comes next and the known bugs.
+what comes next and the known bugs; [`docs/`](docs/) is how each feature works.
 
 | Path | What |
 | --- | --- |

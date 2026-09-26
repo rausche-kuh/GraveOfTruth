@@ -18,21 +18,24 @@
 ```
 
 `scripts\setup.ps1` and `scripts\deploy.ps1` are the same thing on Windows.
-[scripts/README.md](scripts/README.md) documents all six scripts, their flags, how to add a new
-mod, and what to do when something goes wrong.
+[scripts/README.md](scripts/README.md) is the overview of the scripts and how to add a new mod;
+[docs/](docs/) has every flag, troubleshooting, releasing, and the environment in detail.
 
 ## Layout
 
 ```
 GraveOfTruth/          one mod: <Name>/<Name>.csproj, src/, assets/, package/, README.md
   package/             manifest.json, icon.png, the Thunderstore page README.md and CHANGELOG.md
+  docs/, ROADMAP.md    design notes and what comes next, per mod
 OdinsMissingPatch/     the same shape, minus assets/
 ThisIsValheim/         the same shape, minus assets/
 ImmersiveEntrance/     the same shape, minus assets/
 OdinsTree/             the same shape, minus assets/
 OdinsCompass/          the same shape
-OdinsPaths/            the same shape, minus assets/ (a scaffold so far)
-scripts/               setup, deploy, bump, package, decompile, clean (.sh and .ps1)
+OdinsPaths/            the same shape, minus assets/ (in development, not released)
+scripts/               setup, deploy, bump, package, decompile, clean (.sh and .ps1); publish, icon (.sh)
+docs/                  repo wide docs: environment, scripts in detail, releasing
+images/                preview images for the mod pages (not zipped)
 Directory.Build.props  the build every mod shares
 lib/                   game + BepInEx reference assemblies   (generated, gitignored)
 decompiled/            the game's own C#, for API lookup      (generated, gitignored)

@@ -3,67 +3,57 @@
 Makes dying embarrassing. See the root `CLAUDE.md` for the shared build, the scripts and the
 environment.
 
-**Shipped (0.1.2):** on death the whole show is broadcast to every modded client. Clients within
-`StormRadius` of the grave (which includes whoever died) get the bolt on the grave, a ~9s dry
-`ThunderStorm` (looks only, no rain, no rain loop) and the loser jingle as a 3D sound from the
-grave a beat after the bolt strikes, with two fading echoes behind it. The rest get the bolt on the
-grave plus one distant flash and clap from the grave's direction, then the jingle at
-`DistantVolume` from `DistantOffset` towards the grave (the grave itself is past the jingle's 96m
-rolloff). Opening your own grave to loot it wails once more. Every client runs its own copy of the
-effects off the one RPC, so nothing is spawned or played twice.
+**State (0.1.2, shipped):** a death is broadcast to every modded client. Those within
+`StormRadius` (150 m) of the grave, the dead player included, get the obliterator's bolt on the
+grave, a ~9 s dry `ThunderStorm` (looks only) and the loser jingle from the grave a beat after the
+strike, with two fading echoes. The rest get the bolt, one distant flash and clap, and the jingle
+at `DistantVolume` from `DistantOffset` towards the grave (the grave itself is past the jingle's
+96 m rolloff). Looting your own grave wails once more. The tuning is `const`s at the top of
+`src/GraveOfTruth.cs`, not config.
+
+| File | Read it when |
+| --- | --- |
+| `ROADMAP.md` | Picking the next feature (death stats, the obituary, the talking grave) and the facts each still needs checked. |
+| `package/CHANGELOG.md` | Adding a player-visible change (see the root `CLAUDE.md`). |
+
+## Source
 
 | Path | What |
 | --- | --- |
-| `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
-| `src/Dev/GraveOfTruthTest.cs` | The `gravetest` dev command, a `partial` of the plugin class. Debug builds only, never packaged. |
-| `assets/sound.ogg` | Loser jingle, loaded at runtime from next to the DLL. |
-| `ROADMAP.md` | What comes next (death stats, the obituary broadcast, the talking grave), with the research each entry needs first. |
-| `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md` (the changelog, see the root `CLAUDE.md`). |
+| `src/GraveOfTruth.cs` | The whole plugin: `RegisterRpc`, `WailOnDeath`, `WailOnLoot`, `StormSky`, the `RPC_Wail` handler and its effects. |
+| `src/Dev/GraveOfTruthTest.cs` | `gravetest [distance]`, a `partial` of the plugin class. Debug builds only. |
+| `assets/sound.ogg` | The jingle, loaded at runtime from next to the DLL. |
+| `package/` | `manifest.json`, `icon.png`, `README.md` (the mod page), `CHANGELOG.md`. |
 
-## Conventions
+## Rules that always apply
 
-- The jingle plays from a throwaway 3D `AudioSource` spawned at the grave, routed through the
-  master mixer's SFX group so the volume sliders apply. Never attach it to the player — that
-  object is destroyed on respawn and cuts the death sound off.
-- The jingle waits `StrikeLeadIn` (~1.7s) before it starts on a death, or the bolt's clap buries
-  it, and is followed by two quieter, slightly detuned repeats (`EchoDelay` / `TailDelay`) that
-  fake an echo. Each repeat is its own throwaway source, so they overlap the way a real one does.
-- Everything is networked with one routed RPC (`GraveOfTruth_Wail`, a `Vector3` and a `bool` for
-  whether it was a death or a looting) sent to `ZRoutedRpc.Everybody`, which includes the sender —
-  `InvokeRoutedRPC` handles it locally and the server does not echo it back, so every client runs
-  the handler exactly once. `ZNet` builds a fresh `ZRoutedRpc` per
-  session, so registration hangs off a `Game.Start` postfix and is guarded against re-registering
-  on the same instance (`m_functions.Add` throws on a duplicate). Only modded clients hear it.
-- The patches on `Player.OnDeath` / `TombStone.Interact` do nothing but send the RPC; every effect
-  lives in the handler, so there is one description of the show and every client runs the same one.
-  The handler bails out on a dedicated server (`ZNet.IsDedicated()`) — nobody is watching there.
-- The bolt on the grave is the obliterator's own lightning, `Incinerator.m_lightingAOEs`, found via
-  `Resources.FindObjectsOfTypeAll<Incinerator>()`. It is a networked prefab, so every client spawns
-  its own copy under `ZNetView.m_forceDisableInit` (the game's own idiom: the `ZNetView` destroys
-  itself in `Awake`, no ZDO, nothing replicated) — instantiating it normally would show the other
-  clients a second bolt on top of the one they spawned. `Thunder.m_flashEffect` +
-  `m_thunderEffect` over the grave is the fallback when no obliterator can be found. It carries
-  real `Aoe` damage, so spawn it **inactive**, zero every `Aoe` on it, then `SetActive(true)` — an
-  `Aoe` with `m_hitOnEnable` lands its hit inside `Instantiate` otherwise, and `Awake` (where the
-  `ZNetView` reads the flag) runs on that `SetActive`. `Aoe` cleans itself up via `m_ttl`, so keep
-  the component and defang it rather than destroying it.
-- Never hook anything that runs *inside* `Player.OnDeath` before `Game.RequestRespawn` (e.g.
-  `TombStone.Setup`, which `CreateTombStone` calls): an exception there skips the respawn request
-  and the corpse stays standing forever. Patch `OnDeath` itself and wrap the body in try/catch.
-- The storm must stay cosmetic. Never set `EnvMan.m_debugEnv` or `SetDebugWind`: they change the
-  environment every system reads, so they make players Wet, lift Freezing and cold, override
-  `EnvZone` in dungeons and move the wind ships sail on. Instead `StormSky` prefixes the private
-  `EnvMan.SetEnv`, which only renders (light, fog, clouds, rain, ambient loop, wet shader), and
-  hands it `InterpolateEnvironment(real, ThunderStorm, fade)`; `IsWet` / `IsCold` / wind read
-  `GetCurrentEnvironment()` and never see it. The interpolation clones the *real* env's
-  `m_psystems`, `m_isWet` and `m_envObject`; the first two stay the real env's, as does
-  `m_ambientLoop` (the storm's is rain), so the storm never rains. Only `m_envObject` is swapped
-  to the storm's past the halfway mark — the storm's `Thunder` lives on it, so its horizon
-  flashes come for free. It is skipped
-  while the local player is `InInterior()`.
-- Nearness is decided once, when the RPC arrives, so the dead player keeps their storm after
-  respawning at home. `RPC_Wail` has its own `WailCooldown`, which covers several deaths at once
-  and any client sending the RPC at will.
-- To test without dying: `scripts/deploy.sh -c Debug GraveOfTruth`, then `devcommands` and `gravetest [distance]` in the F5 console drops a real
-  grave of yours (one stone inside, so looting it wails too) 30m ahead in the direction you are
-  looking and sends the same RPC a death would. Mind `WailCooldown` between runs.
+- **One routed RPC** (`GraveOfTruth_Wail`: a `Vector3`, and a `bool` for death vs. looting) sent
+  to `ZRoutedRpc.Everybody`, sender included, so every client runs the handler exactly once.
+  `ZNet` builds a fresh `ZRoutedRpc` per session: register in a `Game.Start` postfix, guarded
+  against re-registering (`m_functions.Add` throws). The handler bails out on a dedicated server.
+- **The patches only send the RPC**; every effect lives in the handler, so there is one
+  description of the show. Nearness is decided once, when the RPC arrives, so the dead player
+  keeps their storm after respawning. `WailCooldown` guards against several deaths at once and
+  clients sending the RPC at will.
+- **Never hook anything inside `Player.OnDeath` before `Game.RequestRespawn`** (e.g.
+  `TombStone.Setup`): an exception there skips the respawn and the corpse stands forever. Patch
+  `OnDeath` itself and wrap the body in try/catch.
+- **The jingle** plays from a throwaway 3D `AudioSource` at the grave, routed through the master
+  mixer's SFX group so the sliders apply — never on the player, who is destroyed on respawn. It
+  waits `StrikeLeadIn` (~1.7 s) so the clap does not bury it; the echoes (`EchoDelay`,
+  `TailDelay`) are quieter, detuned repeats, each its own source so they overlap.
+- **The bolt** is `Incinerator.m_lightingAOEs` (found via `FindObjectsOfTypeAll<Incinerator>()`;
+  `Thunder.m_flashEffect` + `m_thunderEffect` is the fallback). It is networked and carries real
+  `Aoe` damage: spawn it **inactive** under `ZNetView.m_forceDisableInit` (no ZDO, or other clients
+  see two bolts), zero every `Aoe` (keep the component — `m_ttl` cleans it up), then
+  `SetActive(true)`; an `Aoe` with `m_hitOnEnable` would hit inside `Instantiate` otherwise.
+- **The storm stays cosmetic.** Never set `EnvMan.m_debugEnv` or `SetDebugWind` — they change
+  the environment every system reads (Wet, Freezing, dungeon `EnvZone`, sailing wind). `StormSky`
+  prefixes the private `EnvMan.SetEnv`, which only renders, with
+  `InterpolateEnvironment(real, ThunderStorm, fade)`; `IsWet` / `IsCold` / wind read
+  `GetCurrentEnvironment()` and never see it. The real env's `m_psystems`, `m_isWet` and
+  `m_ambientLoop` are kept, so it never rains; only `m_envObject` swaps to the storm's past the
+  halfway mark, which brings its horizon flashes. Skipped while `InInterior()`.
+- **Testing without dying:** `scripts/deploy.sh -c Debug GraveOfTruth`, then `devcommands` and
+  `gravetest [distance]` in the F5 console drops a real grave of yours (one stone inside, so
+  looting it wails too) 30 m ahead and sends the same RPC a death would. Mind `WailCooldown`.

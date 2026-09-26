@@ -9,7 +9,8 @@ actually does.
 | `src/OdinsMissingPatch.cs` | The BepInEx entry point: binds the config, applies the patches. |
 | `src/Tweak.cs` | What a tweak is — its config section, its Enabled switch, its multipliers. |
 | `src/Tweaks/` | One file per quality of life change, patches included. |
-| `docs/` | The notes behind the code: `tweaks.md` (what each tweak does), `conventions.md`, one file per subsystem, `references.md`. `CLAUDE.md` indexes them. |
+| `src/Dev/` | Console commands for testing, compiled into Debug builds only. |
+| `docs/` | The notes behind the code: `architecture.md` (every source file), `tweaks.md` (what each tweak does), `conventions.md`, one file per subsystem, `references.md`. `CLAUDE.md` indexes them. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 
 ## Adding a tweak

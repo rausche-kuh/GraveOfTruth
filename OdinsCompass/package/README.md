@@ -11,7 +11,7 @@ closer you get. No map pins, no sound, no spoilers — a direction, and the walk
 - **Follow it** — with the compass worn, a few wavy lines of blue light leave you toward what
   it seeks, low over the ground and up over a hill in the way, a few more as you close in,
   running into it as you arrive, and none once you are there.
-- **Upgrade it** biome by biome, each tier from the materials of the biome before: Meadows,
+- **Upgrade it** biome by biome, each tier from that biome's materials plus the compass below: Meadows,
   Black Forest, Swamp, Mountain, Plains, Mistlands, Ashlands, Deep North. Every tier unlocks that
   biome's boss and its places — burial chambers, sunken crypts, frost caves, tar pits, infested
   mines, charred fortresses — and the tier's ore.

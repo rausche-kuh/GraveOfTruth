@@ -1,4 +1,0 @@
-- Invested mines: camera renders infront of fog
-- Winding Tunnels: placement is completly off, as the entrance is flat on the flow
-- lighting quirk with the ice dungeon - exit glow hidden is correct for the other, seems to do nothing for the ice cave
-- floor mode probe works best, with the ice cave still needing 0 0 0.5 offset.

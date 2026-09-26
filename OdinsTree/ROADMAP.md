@@ -2,7 +2,8 @@
 
 Odin's Tree makes a tree safe to build a tree house on. The four features from the first plan
 (bless, guard the ground, cycle kinds, twerk-grow) are built in the simplest form that works;
-what each one rests on is in `CLAUDE.md`. This is what comes next, and what is known to be rough.
+what each one rests on is in
+[`docs/mechanics.md`](docs/mechanics.md) and [`docs/terrain-guard.md`](docs/terrain-guard.md). This is what comes next, and what is known to be rough.
 
 ## 1. Polish the four features
 
@@ -10,7 +11,7 @@ what each one rests on is in `CLAUDE.md`. This is what comes next, and what is k
   a short-lived ZDO key polled from `TreeBase.Awake`) would let everyone see the show.
   Lifting only plays the repair tool's place effect. The glow's light sits 2 m beside the
   trunk, where the boss stone's runes are.
-- **The warden** has not run on a dedicated server yet. To check there: the server log for
+- **The warden** ([`docs/terrain-guard.md`](docs/terrain-guard.md)) has not run on a dedicated server yet. To check there: the server log for
   `Terrain compiler could not find hmap` (a compiler instantiated before its zone), a vanilla
   client digging beside a blessed tree gets `Odin's tree guards this ground` and no change,
   digging 20 m away still works and shows up for everyone, and the ownership of the
@@ -45,7 +46,10 @@ what each one rests on is in `CLAUDE.md`. This is what comes next, and what is k
 
 # Bugs
 
-None open. Watch for:
+- Twerking claims the sapling's `ZNetView` but never checks the ward (`PrivateArea.CheckAccess`),
+  unlike blessing and cycling: anyone can grow a sapling inside someone else's ward.
+
+Watch for:
 
 - `Families` in the config merges with the sapling families by shared name; a typo in the
   config silently makes a family of one, which is ignored.

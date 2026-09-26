@@ -7,6 +7,7 @@ describes what the mod actually does.
 | Path | What |
 | --- | --- |
 | `src/GraveOfTruth.cs` | The whole plugin: BepInEx entry point + Harmony patches. |
+| `src/Dev/GraveOfTruthTest.cs` | The `gravetest` console command; Debug builds only (`deploy.sh -c Debug`). |
 | `assets/sound.ogg` | The jingle, loaded at runtime from next to the DLL. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 

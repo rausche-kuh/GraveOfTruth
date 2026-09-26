@@ -13,6 +13,7 @@ portal. [`package/README.md`](package/README.md) is the Thunderstore page.
 | `src/InteriorGroup.cs` | Interior-only renderers, shown around the portal render. |
 | `src/Dev/EntranceCommands.cs` | `ientrance` console command for inspecting and calibrating. Debug builds only. |
 | `package/` | What Thunderstore gets. `icon.png` is a placeholder. |
+| `ROADMAP.md`, `docs/` | What is left to check and the known bugs; how the rendering, the floor shift and the game facts work. |
 
 ## Build
 

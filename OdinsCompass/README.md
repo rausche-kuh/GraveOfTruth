@@ -5,7 +5,8 @@ lines of bright blue light blow toward it, low over the ground, a few more the c
 Upgrade it biome by biome and it learns each biome's dungeons and ore. The finding is the game's
 own vegvisir request, so it works on any server, modded or not.
 [`package/README.md`](package/README.md) is the Thunderstore page; [`ROADMAP.md`](ROADMAP.md) is
-what is still to check and what comes next; [`CLAUDE.md`](CLAUDE.md) is how it is built.
+what is still to check and what comes next; [`docs/`](docs/) is the design behind each
+feature; [`CLAUDE.md`](CLAUDE.md) is how it is built.
 
 | Path | What |
 | --- | --- |
@@ -17,6 +18,7 @@ what is still to check and what comes next; [`CLAUDE.md`](CLAUDE.md) is how it i
 | `src/Targets.cs`, `src/Translations.cs`, `src/Icons.cs` | The target groups from the config, the words, the icons. |
 | `src/Dev/CompassCommands.cs` | The `compass` console command for checking location and prefab names in game. Debug builds only. |
 | `assets/` | `translations.csv` and the item icons, shipped beside the DLL. |
+| `docs/` | The design, one file per feature, with the game facts it rests on. |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 
 ## Build
