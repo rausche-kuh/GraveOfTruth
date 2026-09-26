@@ -35,10 +35,34 @@ namespace OdinsPaths
         private static readonly int LinksKey = "OdinsPaths_HarbourLinks".GetStableHashCode();
         /// <summary>A landing this close to a harbour is that harbour: roads leaving one shore for different islands share their stone.</summary>
         private const float Merge = 25f;
-        /// <summary>A structure this close to a landing's shore point stands on it; the stone goes a little inland instead.</summary>
-        private const float Taken = 4f;
-        /// <summary>How many trail points (2 m each) inland a stone may move off a built-on shore point.</summary>
+        /// <summary>
+        /// How far from an older road's shore point (rebuilt from its 8 m network points) its
+        /// harbour stone may stand: on the dock or up the road, and the shore itself moves a little.
+        /// </summary>
+        private const float ForkReach = 40f;
+        /// <summary>A stone's group colour on its ZDO, as an index into <see cref="Colours"/> plus one (0: none yet).</summary>
+        private static readonly int GroupKey = "OdinsPaths_HarbourGroup".GetStableHashCode();
+        /// <summary>
+        /// The groups' colours on the map - every harbour linked to another, directly or through
+        /// others, is one group. No red: the vanilla vegvisirs' pins are white on red runes.
+        /// </summary>
+        internal static readonly Color[] Colours =
+        {
+            new Color(0.25f, 0.55f, 1f),   // blue
+            new Color(1f, 0.82f, 0.2f),    // yellow
+            new Color(0.45f, 0.9f, 0.3f),  // green
+            new Color(0.9f, 0.4f, 0.9f),   // magenta
+            new Color(0.2f, 0.85f, 0.8f),  // teal
+            new Color(1f, 0.55f, 0.15f),   // orange
+            new Color(0.62f, 0.5f, 1f),    // violet
+            new Color(0.75f, 0.95f, 0.65f), // pale green
+        };
+        /// <summary>A structure this close to where a stone beside the road would stand: it goes further up the road.</summary>
+        private const float Taken = 2f;
+        /// <summary>How many trail points (2 m each) up the road a stone may move off something built.</summary>
         private const int Inland = 5;
+        /// <summary>How far past the road's edge a stone beside it stands.</summary>
+        private const float StoneSide = 1.2f;
         /// <summary>A stone this close to the point a client asked from is the one it used.</summary>
         private const float Asked = 3f;
         /// <summary>
@@ -171,10 +195,12 @@ namespace OdinsPaths
 
         /// <summary>
         /// A stone at each landing of a main road's trail, the two shores of each crossing linked
-        /// both ways; a landing near a harbour already there joins it. The stones placed, as ZDOs.
-        /// Server only.
+        /// both ways; a landing near a harbour already there joins it. A road that forks off an
+        /// older one out at sea (fork: where it sets out) has no shore behind it: its first
+        /// harbour is linked to the shores of the older road's crossing instead
+        /// (<see cref="ForkHarbours"/>). The stones placed, as ZDOs. Server only.
         /// </summary>
-        public static List<ZDOID> Place(Trail trail, List<Landings.Landing> landings, Structures structures)
+        public static List<ZDOID> Place(Trail trail, List<Landings.Landing> landings, Structures structures, Vector2? fork)
         {
             List<ZDOID> placed = new List<ZDOID>();
             if (landings.Count == 0)
@@ -188,20 +214,165 @@ namespace OdinsPaths
                 return placed;
             }
             List<ZDO> stones = Stones();
+            List<ZDO> touched = new List<ZDO>();
             for (int i = 0; i < landings.Count; i++)
             {
                 ZDO here = Harbour(trail, landings[i], stone, stones, structures, placed);
+                touched.Add(here);
                 // The shore across is the next landing of the same crossing; a trail that ends
                 // or starts in the water has a crossing with one shore.
                 if (i + 1 < landings.Count && landings[i + 1].Crossing == landings[i].Crossing)
                 {
                     ZDO there = Harbour(trail, landings[i + 1], stone, stones, structures, placed);
+                    touched.Add(there);
                     Link(here, there);
                     Link(there, here);
                     i++;
                 }
             }
+            if (fork.HasValue && SetsOutAtSea(trail, landings))
+            {
+                LinkFork(touched[0], fork.Value, stones);
+            }
+            foreach (ZDO zdo in touched)
+            {
+                Colour(zdo, stones);
+            }
             return placed;
+        }
+
+        /// <summary>Whether the trail starts in the water: its first landing is a shore it comes to, with none it left from.</summary>
+        private static bool SetsOutAtSea(Trail trail, List<Landings.Landing> landings)
+        {
+            return landings.Count > 0 && trail.Water[0] && landings[0].Toward < landings[0].Shore;
+        }
+
+        /// <summary>Links a sea fork's first harbour both ways with the harbours of the crossing it forked off.</summary>
+        private static int LinkFork(ZDO first, Vector2 fork, List<ZDO> stones)
+        {
+            int linked = 0;
+            foreach (ZDO parent in ForkHarbours(fork, stones))
+            {
+                if (parent != first)
+                {
+                    Link(first, parent);
+                    Link(parent, first);
+                    linked++;
+                }
+            }
+            return linked;
+        }
+
+        /// <summary>
+        /// The harbours at both shores of the crossing a road forks off at sea: the older main
+        /// road through the fork point (a network point of it, not its first), walked from there
+        /// both ways to its last dry points, each shore's nearest stone within
+        /// <see cref="ForkReach"/>. None if the fork is on land or no such road is known.
+        /// </summary>
+        private static List<ZDO> ForkHarbours(Vector2 fork, List<ZDO> stones)
+        {
+            List<ZDO> found = new List<ZDO>();
+            Network network = Network.Current;
+            if (network == null)
+            {
+                return found;
+            }
+            foreach (Network.Road road in network.Roads)
+            {
+                if (road.Kind != RoadKind.Main || road.Points.FindIndex(p => (p - fork).sqrMagnitude < 1f) <= 0)
+                {
+                    continue;
+                }
+                Trail parent = new Trail(road.Points, road.Kind);
+                int at = 0;
+                float best = float.MaxValue;
+                for (int i = 0; i < parent.Points.Count; i++)
+                {
+                    float distance = (parent.Points[i] - fork).sqrMagnitude;
+                    if (distance < best)
+                    {
+                        best = distance;
+                        at = i;
+                    }
+                }
+                if (!parent.Water[at])
+                {
+                    continue;
+                }
+                int before = at;
+                while (before >= 0 && parent.Water[before])
+                {
+                    before--;
+                }
+                int after = at;
+                while (after < parent.Points.Count && parent.Water[after])
+                {
+                    after++;
+                }
+                foreach (int shore in new[] { before, after })
+                {
+                    if (shore < 0 || shore >= parent.Points.Count)
+                    {
+                        continue;
+                    }
+                    ZDO nearest = Nearest(stones, parent.Points[shore], ForkReach);
+                    if (nearest != null && !found.Contains(nearest))
+                    {
+                        found.Add(nearest);
+                    }
+                }
+            }
+            return found;
+        }
+
+        /// <summary>
+        /// Links every road of the network that sets out at sea to the crossing it forked off,
+        /// for harbours placed before sea forks were linked, and colours every group. How many
+        /// links were added. Server only.
+        /// </summary>
+        public static int Relink(Network network)
+        {
+            List<ZDO> stones = Stones();
+            int linked = 0;
+            foreach (Network.Road road in network.Roads)
+            {
+                if (road.Kind != RoadKind.Main || road.Points.Count < 2)
+                {
+                    continue;
+                }
+                Trail trail = new Trail(road.Points, road.Kind);
+                List<Landings.Landing> landings = Landings.Find(trail);
+                if (!SetsOutAtSea(trail, landings))
+                {
+                    continue;
+                }
+                ZDO first = Nearest(stones, trail.Points[landings[0].Shore], ForkReach);
+                if (first != null)
+                {
+                    linked += LinkFork(first, road.Points[0], stones);
+                }
+            }
+            foreach (ZDO zdo in stones)
+            {
+                Colour(zdo, stones);
+            }
+            return linked;
+        }
+
+        private static ZDO Nearest(List<ZDO> stones, Vector2 point, float within)
+        {
+            ZDO nearest = null;
+            float best = within;
+            foreach (ZDO zdo in stones)
+            {
+                float distance = Vector2.Distance(Flat(zdo.GetPosition()), point);
+                if (distance < best)
+                {
+                    best = distance;
+                    nearest = zdo;
+                }
+            }
+            return nearest;
         }
 
         /// <summary>The harbour a landing belongs to: the stone within <see cref="Merge"/>, or a new one on its shore.</summary>
@@ -223,29 +394,55 @@ namespace OdinsPaths
             {
                 return nearest;
             }
-            // Off a built-on shore point (a player's dock), a few metres up the trail, away from the water.
-            int step = landing.Shore < landing.Toward ? -1 : 1;
-            int at = landing.Shore;
-            for (int i = 1; i <= Inland && structures.Distance(trail.Points[at], Taken) < Taken; i++)
+            // The dock first: the stone may stand on it.
+            int seed = Mathf.RoundToInt(shore.x) * 73856093 ^ Mathf.RoundToInt(shore.y) * 19349663;
+            Docks.Harbour dock = Docks.ForHarbour(trail, landing, structures, seed);
+            placed.AddRange(dock.Built.Placed);
+            Vector3 position;
+            Quaternion rotation;
+            if (dock.Built.HasStone)
             {
-                int next = landing.Shore + i * step;
-                if (next < 0 || next >= trail.Points.Count || trail.Water[next])
+                position = dock.Built.Stone;
+                rotation = dock.Built.StoneRotation;
+            }
+            else
+            {
+                StoneBesideRoad(trail, landing, dock.LandEnd, structures, out position, out rotation);
+            }
+            ZDO spawned = Landings.Spawn(stone, position, rotation);
+            stones.Add(spawned);
+            placed.Add(spawned.m_uid);
+            structures.Add(new Vector2(position.x, position.z));
+            placed.AddRange(Buildings.ForHarbour(trail, landing, dock.LandEnd, structures, seed + 1));
+            return spawned;
+        }
+
+        /// <summary>
+        /// A stone without a dock to stand on (or whose dock has no "stone" spot): on the ground
+        /// beside the road, a little inland of where the dock begins, and further up the road off
+        /// anything built there (a player's dock). Its face to the road's far side, so it is read
+        /// on the way down to the boat.
+        /// </summary>
+        private static void StoneBesideRoad(Trail trail, Landings.Landing landing, float landEnd, Structures structures, out Vector3 position, out Quaternion rotation)
+        {
+            Vector2 point = Vector2.zero;
+            Vector2 seaward = Vector2.up;
+            float road = 0f;
+            for (int i = 0; i <= Inland; i++)
+            {
+                Vector2 middle = Docks.Along(trail, landing, landEnd + 2f + i * Trail.Spacing, out road, out seaward);
+                Vector2 right = new Vector2(seaward.y, -seaward.x);
+                point = middle - right * (trail.Kind.HalfWidthAt(middle) + StoneSide);
+                if (structures.Distance(point, Taken) >= Taken)
                 {
                     break;
                 }
-                at = next;
             }
-            Vector2 point = trail.Points[at];
-            // Its face to the road, its back to the water: read on the way to the boat, and seen
-            // from the boat coming in. Verify in game which face carries the runes.
-            Vector2 inland = point - trail.Points[landing.Toward];
-            Quaternion rotation = inland.sqrMagnitude > 0f
-                ? Quaternion.LookRotation(new Vector3(inland.x, 0f, inland.y)) : Quaternion.identity;
-            ZDO spawned = Landings.Spawn(stone, new Vector3(point.x, Landings.Height(trail, at), point.y), rotation);
-            stones.Add(spawned);
-            structures.Add(point);
-            placed.Add(spawned.m_uid);
-            return spawned;
+            // The road's edge may be cut into the bank or filled over the beach: the lower of the
+            // two, and a little into it, so the stone neither floats nor stands in a pit.
+            position = new Vector3(point.x, Mathf.Min(Ground.Height(point.x, point.y), road) - 0.2f, point.y);
+            Vector2 across = new Vector2(seaward.y, -seaward.x);
+            rotation = Quaternion.LookRotation(new Vector3(across.x, 0f, across.y));
         }
 
         /// <summary>Adds the harbour at to's position to from's links, once.</summary>
@@ -272,6 +469,100 @@ namespace OdinsPaths
             // A client near the stone may own it; the server takes it back to write.
             from.SetOwner(ZDOMan.GetSessionID());
             from.Set(LinksKey, pkg.GetArray());
+        }
+
+        /// <summary>The stones linked to start, directly or through others, start among them.</summary>
+        internal static List<ZDO> Group(ZDO start, List<ZDO> stones)
+        {
+            List<ZDO> group = new List<ZDO> { start };
+            for (int i = 0; i < group.Count; i++)
+            {
+                foreach (Vector2 link in Links(group[i]))
+                {
+                    ZDO across = stones.Find(s => (Flat(s.GetPosition()) - link).sqrMagnitude < 1f);
+                    if (across != null && !group.Contains(across))
+                    {
+                        group.Add(across);
+                    }
+                }
+            }
+            return group;
+        }
+
+        /// <summary>
+        /// The colour of the stone's group, as an index into <see cref="Colours"/>, written to every
+        /// stone of it: the colour most of its stones have already (two groups a new road joins
+        /// keep the larger one's), else the one fewest stones have. Server only.
+        /// </summary>
+        internal static int Colour(ZDO stone, List<ZDO> stones)
+        {
+            List<ZDO> group = Group(stone, stones);
+            int[] votes = new int[Colours.Length + 1];
+            foreach (ZDO zdo in group)
+            {
+                int c = zdo.GetInt(GroupKey);
+                if (c > 0 && c <= Colours.Length)
+                {
+                    votes[c]++;
+                }
+            }
+            int chosen = 0;
+            for (int c = 1; c <= Colours.Length; c++)
+            {
+                if (votes[c] > votes[chosen])
+                {
+                    chosen = c;
+                }
+            }
+            if (chosen == 0)
+            {
+                int[] used = new int[Colours.Length + 1];
+                foreach (ZDO zdo in stones)
+                {
+                    int c = zdo.GetInt(GroupKey);
+                    if (c > 0 && c <= Colours.Length)
+                    {
+                        used[c]++;
+                    }
+                }
+                chosen = 1;
+                for (int c = 2; c <= Colours.Length; c++)
+                {
+                    if (used[c] < used[chosen])
+                    {
+                        chosen = c;
+                    }
+                }
+            }
+            foreach (ZDO zdo in group)
+            {
+                if (zdo.GetInt(GroupKey) != chosen)
+                {
+                    zdo.SetOwner(ZDOMan.GetSessionID());
+                    zdo.Set(GroupKey, chosen);
+                }
+            }
+            return chosen - 1;
+        }
+
+        /// <summary>A harbour pin's name: "Harbour" in its group's colour, which the client's map also tints the icon with.</summary>
+        private static string PinNameFor(int colour)
+        {
+            return "<color=#" + ColorUtility.ToHtmlStringRGB(Colours[colour]) + ">" + PinName + "</color>";
+        }
+
+        /// <summary>Whether a map pin is a harbour's, and its group colour if it has one (pins from before the groups have none).</summary>
+        internal static bool IsPin(string name, out Color colour)
+        {
+            colour = Color.white;
+            if (name == PinName)
+            {
+                return true;
+            }
+            const string head = "<color=#";
+            string tail = ">" + PinName + "</color>";
+            return name != null && name.Length == head.Length + 6 + tail.Length && name.StartsWith(head) && name.EndsWith(tail)
+                && ColorUtility.TryParseHtmlString(name.Substring(head.Length - 1, 7), out colour);
         }
 
         private static List<Vector2> Links(ZDO zdo)
@@ -322,7 +613,8 @@ namespace OdinsPaths
                 Debug.LogWarning("[OdinsPaths] A harbour stone at " + Flat(point) + " asked, but none stands there.");
                 return true;
             }
-            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "RPC_DiscoverLocationResponse", PinName, (int)PinType, asked.GetPosition(), false);
+            string pinName = PinNameFor(Colour(asked, stones));
+            ZRoutedRpc.instance.InvokeRoutedRPC(sender, "RPC_DiscoverLocationResponse", pinName, (int)PinType, asked.GetPosition(), false);
             int answered = 0;
             foreach (Vector2 link in Links(asked))
             {
@@ -331,7 +623,7 @@ namespace OdinsPaths
                 {
                     continue;
                 }
-                ZRoutedRpc.instance.InvokeRoutedRPC(sender, "RPC_DiscoverLocationResponse", PinName, (int)PinType, across.GetPosition(), showMap);
+                ZRoutedRpc.instance.InvokeRoutedRPC(sender, "RPC_DiscoverLocationResponse", pinName, (int)PinType, across.GetPosition(), showMap);
                 answered++;
             }
             if (answered == 0)
@@ -342,7 +634,7 @@ namespace OdinsPaths
         }
 
         /// <summary>Every harbour stone in the world. Rare - a lay's landings, a stone used -, so a walk over every ZDO.</summary>
-        private static List<ZDO> Stones()
+        internal static List<ZDO> Stones()
         {
             List<ZDO> stones = new List<ZDO>();
             foreach (ZDO zdo in ZDOMan.instance.m_objectsByID.Values)
@@ -367,6 +659,55 @@ namespace OdinsPaths
             private static void Postfix()
             {
                 Harbours.Register();
+            }
+        }
+
+        /// <summary>
+        /// A harbour pin in another colour at the same spot (its group joined a larger one, or it
+        /// is from before the groups) gives way to the new one, instead of the map keeping both.
+        /// </summary>
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.DiscoverLocation))]
+        public static class ReplaceHarbourPin
+        {
+            private static void Prefix(Minimap __instance, Vector3 pos, Minimap.PinType type, string name)
+            {
+                if (!Harbours.IsPin(name, out Color _))
+                {
+                    return;
+                }
+                List<Minimap.PinData> old = __instance.m_pins.FindAll(pin => pin.m_type == type && pin.m_name != name && pin.m_save
+                    && Utils.DistanceXZ(pos, pin.m_pos) < 1f && Harbours.IsPin(pin.m_name, out Color _));
+                foreach (Minimap.PinData pin in old)
+                {
+                    __instance.RemovePin(pin);
+                }
+            }
+        }
+
+        /// <summary>The game paints every pin white each update; a harbour's gets its group's colour, which its name carries.</summary>
+        [HarmonyPatch(typeof(Minimap), nameof(Minimap.UpdatePins))]
+        public static class TintHarbourPins
+        {
+            private static readonly Dictionary<string, Color> colours = new Dictionary<string, Color>();
+
+            private static void Postfix(Minimap __instance)
+            {
+                foreach (Minimap.PinData pin in __instance.m_pins)
+                {
+                    if (pin.m_iconElement == null || pin.m_ownerID != 0L || pin.m_name.Length == 0 || pin.m_name[0] != '<')
+                    {
+                        continue;
+                    }
+                    if (!colours.TryGetValue(pin.m_name, out Color colour))
+                    {
+                        colour = Harbours.IsPin(pin.m_name, out Color parsed) ? parsed : Color.clear;
+                        colours[pin.m_name] = colour;
+                    }
+                    if (colour != Color.clear && pin.m_iconElement.color != colour)
+                    {
+                        pin.m_iconElement.color = colour;
+                    }
+                }
             }
         }
     }

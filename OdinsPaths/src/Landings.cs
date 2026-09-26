@@ -38,12 +38,12 @@ namespace OdinsPaths
             public int Crossing;
         }
 
-        /// <summary>The harbour stones or posts placed, as their ZDOs.</summary>
-        public static List<ZDOID> Place(Trail trail, Structures structures)
+        /// <summary>The harbour stones or posts placed, as their ZDOs; fork is where a main road sets out from the network.</summary>
+        public static List<ZDOID> Place(Trail trail, Structures structures, Vector2? fork = null)
         {
             if (trail.Kind == RoadKind.Main)
             {
-                return Harbours.Place(trail, Find(trail), structures);
+                return Harbours.Place(trail, Find(trail), structures, fork);
             }
             List<ZDOID> placed = new List<ZDOID>();
             GameObject prefab = ZNetScene.instance.GetPrefab(PostPrefab);

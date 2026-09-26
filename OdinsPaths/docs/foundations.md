@@ -111,3 +111,15 @@ dirt and for paving, so **a dirt path digs itself out of the snow** at no extra 
 `TerrainComp.SetSnowMask` shows the base depth comes from the Deep North's `GetBiomeHeight`
 mask. The Mountain's snow is the biome's texture, not a channel. Whether dirt or paving paint
 shows through it the way a hoed path does is a **verify** (expected: yes).
+
+## Verified in game (2026-09-24, `paths facts` / `paths bench`, local game)
+
+- The zone heightmap is **64 wide at scale 1**: `TerrainComp` arrays are 65 × 65, vertex `x` sits
+  at `zoneCenter.x - 32 + x`. The compiler prefab is **`_TerrainCompiler`**, placed at the zone
+  centre with y 0. Water level 30.
+- `WorldGenerator.GetHeight` costs **1.5 µs** per sample. `RequestTerrainSync` for one zone takes
+  ~20 ms, mostly waiting on the builder thread - use `RequestTerrain` and poll instead.
+- Search wall times at the 6 ms budget, one sample per cell (2026-09-24): to Yagluth 1 s at 64 m,
+  4 s at 32 m, 16 s at 16 m, plus 6 s for the 4 m pass in its corridor; 32 m is good, 64 m alone
+  hops into water. With five-point sampling `128 32:512 8:128` gave a good line to Yagluth 4.5 km
+  out, and sea 2 with 700 m each way felt right. The numbers behind the passes in `docs/search.md`.

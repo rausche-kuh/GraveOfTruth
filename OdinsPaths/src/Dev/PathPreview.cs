@@ -29,7 +29,8 @@ namespace OdinsPaths
 
         private const string Legend = "Pins: red skull = the target a road leads to (boss, trader, base), grey skull = another instance "
             + "of it, orange fire = a point of interest with a spur, grey fire = one looked at and passed, white house = a hub, pale orb = "
-            + "a stone road every {0} m of land, orange orb = where a spur forks off, blue portal = a landing (a harbour stone, a boat needed), "
+            + "a stone road every {0} m of land, orange orb = where a spur forks off, blue portal = a landing (a harbour stone, a boat needed; "
+            + "'show' pins the stones standing instead, one colour per group of linked harbours), "
             + "magenta fire = where the running search has got to. Hover a pin on the large map for what it is. "
             + "'paths clearpins' removes them.";
 
@@ -276,15 +277,15 @@ namespace OdinsPaths
             float spacing = args.Length > 2 && float.TryParse(args[2], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out float s) ? Mathf.Clamp(s, 8f, 500f) : DefaultDotSpacing;
             ClearPins();
-            int landings = 0;
             foreach (Network.Road road in network.Roads)
             {
                 if (road.Points.Count > 1)
                 {
                     string what = (road.Kind == RoadKind.Main ? "Road to " : "Spur to ") + Progress.NameOf(road.Target);
-                    landings += PinTrail(new Trail(road.Points, road.Kind), spacing, what);
+                    PinTrail(new Trail(road.Points, road.Kind), spacing, what, landings: false);
                 }
             }
+            int harbours = PinHarbours();
             foreach (KeyValuePair<string, Vector2> pinned in network.Pinned)
             {
                 Pin(pinned.Value, Minimap.PinType.Boss, Progress.NameOf(pinned.Key), TargetColour, Progress.NameOf(pinned.Key) + ": the road leads here");
@@ -295,10 +296,29 @@ namespace OdinsPaths
                 Pin(poi, Minimap.PinType.Icon0, "", PoiColour, (spur != null ? spur.Target : "A point of interest") + ": connected");
             }
             PinHubs(network);
-            return network.Roads.Count + " roads, " + landings + " landings, " + network.Pinned.Count + " targets, "
+            return network.Roads.Count + " roads, " + harbours + " harbour stones, " + network.Pinned.Count + " targets, "
                 + network.Connected.Count + " points of interest, " + network.Bases.Count + " bases"
                 + (network.Unreachable.Count > 0 ? "; no way to " + string.Join(", ", new List<string>(network.Unreachable).ToArray()) : "")
                 + ".\n" + string.Format(Legend, spacing.ToString("F0"));
+        }
+
+        /// <summary>
+        /// Every harbour stone standing, in its group's colour - the stones linked to each other,
+        /// directly or through others -, its links in the tooltip. How many.
+        /// </summary>
+        private static int PinHarbours()
+        {
+            List<ZDO> stones = Harbours.Stones();
+            foreach (ZDO stone in stones)
+            {
+                Vector3 p = stone.GetPosition();
+                int colour = Harbours.Colour(stone, stones);
+                int group = Harbours.Group(stone, stones).Count;
+                Pin(new Vector2(p.x, p.z), Minimap.PinType.Icon4, "", Harbours.Colours[colour],
+                    "A harbour stone, group colour " + (colour + 1) + " of " + Harbours.Colours.Length + ": "
+                    + (group > 1 ? group + " harbours linked, directly or through others" : "linked to no harbour"));
+            }
+            return stones.Count;
         }
 
         private static void PinHubs(Network network)
@@ -325,9 +345,9 @@ namespace OdinsPaths
 
         /// <summary>
         /// A main road: an orb every spacing metres of land - none over water - and a portal at each
-        /// landing. A spur: one orb where it forks off. The landings' count.
+        /// landing, unless landings is off. A spur: one orb where it forks off. The landings' count.
         /// </summary>
-        private static int PinTrail(Trail trail, float spacing, string what)
+        private static int PinTrail(Trail trail, float spacing, string what, bool landings = true)
         {
             if (trail.Points.Count == 0)
             {
@@ -347,13 +367,17 @@ namespace OdinsPaths
                     Pin(trail.Points[i], Minimap.PinType.Icon3, "", MainColour, what + ", " + (i * Trail.Spacing).ToString("F0") + " m along");
                 }
             }
-            List<Landings.Landing> landings = Landings.Find(trail);
-            foreach (Landings.Landing landing in landings)
+            if (!landings)
+            {
+                return 0;
+            }
+            List<Landings.Landing> found = Landings.Find(trail);
+            foreach (Landings.Landing landing in found)
             {
                 Pin(trail.Points[landing.Shore], Minimap.PinType.Icon4, "", HarbourColour,
                     what + ": a landing - a harbour stone pinning the far shore, and a boat");
             }
-            return landings.Count;
+            return found.Count;
         }
 
         /// <summary>A road's spurs and the points of interest looked at; the spurs' count. Names them into sb.</summary>

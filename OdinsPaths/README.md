@@ -11,7 +11,7 @@ possible, what it costs and what still has to be checked in game.
 | `src/OdinsPaths.cs` | Entry point and settings. |
 | `src/PathSearch.cs`, `src/Trail.cs`, `src/TerrainWriter.cs`, `src/PathLayer.cs` | Find a route, shape it, write it into the terrain. |
 | `src/RoadKind.cs`, `src/Network.cs`, `src/Planner.cs`, `src/Grower.cs` | Stone and dirt, the network and its storage, what comes next, and when it grows. |
-| `src/Dev/PathCommands.cs` | `paths lay`, `paths plan`, `paths grow`, `paths network`, `paths undo` and more (Debug builds only; the list is in `CLAUDE.md`). |
+| `src/Dev/` | `paths lay`, `paths plan`, `paths grow`, `paths network`, `paths undo` and more (Debug builds only; the full list is in [`docs/architecture.md`](docs/architecture.md)). |
 | `package/` | What Thunderstore gets: `manifest.json`, `icon.png`, `README.md`, `CHANGELOG.md`. |
 
 ## Build

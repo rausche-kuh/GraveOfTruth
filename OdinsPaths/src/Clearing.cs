@@ -36,6 +36,8 @@ namespace OdinsPaths
         /// <summary>A texel with this much dirt or stone counts as road.</summary>
         private const float RoadPaint = 0.3f;
         private const float MinLocationRadius = 8f;
+        /// <summary>How far round a harbour building's pieces a zone generated later is cleared.</summary>
+        private const float BuildingClear = 1.5f;
         /// <summary>At most this many zones a frame, and more than one only while the frame's budget lasts.</summary>
         private const int ZonesPerFrame = 4;
 
@@ -101,9 +103,56 @@ namespace OdinsPaths
             }
         }
 
-        /// <summary>A zone the server has just generated, if a path runs through it.</summary>
+        /// <summary>
+        /// The trees and rocks on a harbour building (points over its footprint, and radius round
+        /// them), in the zones that exist already; a zone generated later is cleared of them by
+        /// <see cref="ClearNewZone"/>, from the building's pieces. How many went.
+        /// </summary>
+        public static int ClearAround(List<Vector2> points, float radius)
+        {
+            if (points.Count == 0)
+            {
+                return 0;
+            }
+            Clearable();
+            HashSet<Vector2s> zones = new HashSet<Vector2s>();
+            float reach = radius + maxReach;
+            foreach (Vector2 p in points)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    zones.Add(ZoneSystem.GetZone(new Vector3(p.x + ((k & 1) == 0 ? -reach : reach), 0f, p.y + ((k & 2) == 0 ? -reach : reach))));
+                }
+            }
+            Result result = new Result();
+            foreach (Vector2s zone in zones)
+            {
+                if (ZoneSystem.instance.IsZoneGenerated(zone))
+                {
+                    ClearZone(zone, (at, r) => Near(points, at, radius + r), false, result);
+                }
+            }
+            return result.Cleared;
+        }
+
+        /// <summary>A zone the server has just generated, if a path or a harbour building is in it.</summary>
         public static void ClearNewZone(Vector2s zone)
         {
+            List<Vector2> buildings = new List<Vector2>();
+            foreach (ZDO zdo in Objects(zone))
+            {
+                if (zdo.GetBool(Builder.BuildingKey))
+                {
+                    Vector3 p = zdo.GetPosition();
+                    buildings.Add(new Vector2(p.x, p.z));
+                }
+            }
+            if (buildings.Count > 0)
+            {
+                Clearable();
+                Result around = new Result();
+                ClearZone(zone, (at, r) => Near(buildings, at, BuildingClear + r), false, around);
+            }
             ZDO compiler = TerrainWriter.FindCompiler(zone);
             byte[] bytes = compiler != null ? compiler.GetByteArray(ZDOVars.s_TCData) : null;
             if (bytes == null)
@@ -288,7 +337,7 @@ namespace OdinsPaths
         }
 
         /// <summary>Within any location's buildings' reach (<see cref="Footprints"/>), the altar a path leads to included. Server only.</summary>
-        private static bool InLocation(Vector2 at)
+        internal static bool InLocation(Vector2 at)
         {
             Vector2s zone = ZoneSystem.GetZone(new Vector3(at.x, 0f, at.y));
             for (int x = zone.x - 1; x <= zone.x + 1; x++)

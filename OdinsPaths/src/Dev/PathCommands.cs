@@ -13,7 +13,7 @@ namespace OdinsPaths
     public partial class OdinsPathsPlugin
     {
         private const string Usage = "paths facts | bench [cells] | where <location> | costs [<name> <value> ...] | search <target> [pass ...] | "
-            + "lay <target> [pass ...] [main|spur] [solo] | spurs | undo | plan | grow [count|all] | preview [all] [full] [spacing] | show [spacing] | auto [on|off] | "
+            + "lay <target> [pass ...] [main|spur] [solo] | spurs | undo | plan | grow [count|all] | preview [all] [full] [spacing] | show [spacing] | relink | auto [on|off] | "
             + "network | forget | clearpins | reset [confirm]   (target: <x> <z> or a location name; "
             + "pass: a cell in metres, or cell:corridor - one alone is the coarse cell before the settings' fine pass, 0 = none; "
             + "main = a paved main road, the default, spur = a dirt spur; solo = from the player alone, not the network)";
@@ -83,6 +83,7 @@ namespace OdinsPaths
                         case "clearpins": Say(args.Context, ClearPins()); break;
                         case "preview": Preview(args); break;
                         case "show": Say(args.Context, Show(args)); break;
+                        case "relink": Say(args.Context, Relink()); break;
                         case "auto": Say(args.Context, Auto(args)); break;
                         default: Say(args.Context, Usage); break;
                     }
@@ -857,6 +858,19 @@ namespace OdinsPaths
             return sb.ToString();
         }
 
+        /// <summary>Links the harbours of roads that fork off at sea to the crossing they forked off, and colours every group.</summary>
+        private static string Relink()
+        {
+            Network network = Network.Current;
+            if (network == null)
+            {
+                return "paths relink runs on the server - a local game, or its host.";
+            }
+            int linked = Harbours.Relink(network);
+            return linked + " links between roads that set out at sea and the crossing they forked off; every group coloured. "
+                + "A stone used again replaces its pin with the group's colour.";
+        }
+
         /// <summary>Empties the network - the roads stay in the terrain, the next lay just no longer knows them.</summary>
         private static string Forget()
         {
@@ -922,7 +936,7 @@ namespace OdinsPaths
                 {
                     compilers.Add(zdo);
                 }
-                else if (placedHashes.Contains(prefab) && (zdo.GetBool(Landings.PlacedKey) || (zdo.GetLong(ZDOVars.s_creator, 0L) == 0L && OnRoad(roadPoints, zdo.GetPosition()) && !InLocation(zdo.GetPosition()))))
+                else if (zdo.GetBool(Landings.PlacedKey) || (placedHashes.Contains(prefab) && zdo.GetLong(ZDOVars.s_creator, 0L) == 0L && OnRoad(roadPoints, zdo.GetPosition()) && !InLocation(zdo.GetPosition())))
                 {
                     placed.Add(zdo);
                 }
@@ -930,7 +944,7 @@ namespace OdinsPaths
             if (!confirm)
             {
                 return "paths reset would empty the terrain data of " + compilers.Count + " zones - every road, and every change a player made to the ground too -, "
-                    + "remove " + placed.Count + " harbour stones, posts and lamps, and forget " + network.Roads.Count + " roads. Cleared trees and rocks do not come back. "
+                    + "remove " + placed.Count + " harbour stones, dock pieces, posts and lamps, and forget " + network.Roads.Count + " roads. Cleared trees and rocks do not come back. "
                     + "Back up the world first; then 'paths reset confirm'.";
             }
             Heightmap prefabMap = ZoneSystem.instance.m_zonePrefab.GetComponentInChildren<Heightmap>();
@@ -954,7 +968,7 @@ namespace OdinsPaths
             lastLandings = null;
             lastRoad = null;
             lastSpurs = null;
-            return "Emptied the terrain data of " + compilers.Count + " zones, removed " + placed.Count + " harbour stones, posts and lamps, and forgot "
+            return "Emptied the terrain data of " + compilers.Count + " zones, removed " + placed.Count + " harbour stones, dock pieces, posts and lamps, and forgot "
                 + roads + " roads. The next growth starts afresh ('paths auto on', or 'paths grow').";
         }
 

@@ -1,1 +1,0 @@
-- Traders need to be fixed, before paths are layed out. This may need estimates, but these should be good enough

@@ -356,7 +356,7 @@ namespace OdinsPaths
             yield return TerrainWriter.Write(outcome.Trail, locations, structures, outcome.Written);
             Progress.Stage("Clearing trees and rocks", WriteShare, ClearShare);
             yield return Clearing.Clear(outcome.Trail, outcome.Cleared);
-            outcome.Landings = OdinsPaths.Landings.Place(outcome.Trail, structures);
+            outcome.Landings = OdinsPaths.Landings.Place(outcome.Trail, structures, last.Origin.Position);
             outcome.Lamps = OdinsPaths.Lamps.Place(outcome.Trail, structures, locations);
             outcome.WriteMilliseconds = (Time.realtimeSinceStartup - started) * 1000.0;
             done(outcome);
